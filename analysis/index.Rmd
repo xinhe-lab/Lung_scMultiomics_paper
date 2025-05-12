@@ -1,0 +1,30 @@
+---
+title: "Single-cell multiomics analyses on lung immune cells"
+site: workflowr::wflow_site
+output:
+  workflowr::wflow_html:
+    toc: false
+editor_options:
+  chunk_output_type: console
+---
+
+## Introduction
+
+Previous study showed immune cells have a shared role in the development of both AOA and COA based on heritability analysis on ATAC-seq data of blood and lung cell types. Due to lack of resolution, it is unclear if different immune subsets sampled from lung or other tissues can have distinct roles in the genetics of asthma.
+
+## Hypotheses
+
+* Lung resident immune cells have distinct transcriptomic and epigenetic features
+* Lung resident immune cells at a granular level show distinct roles in the genetics of asthma.
+* Fine-mapped putative causal variants at asthma loci may regulate enhancer activity through one or more lung immune subsets. 
+
+## Experiment design 
+
+Single-cell multiomics on paired lung and spleen samples from 9 donors (6 controls and 3 cases).
+
+## Results
+
+
+
+
+
