@@ -1,0 +1,46 @@
+---
+title: "Cell-type annotations"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+date: '`r Sys.Date()`'
+author: 'Jing Gu'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(Seurat)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(patchwork)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+library(GOSemSim)
+library(gridExtra)
+library(slingshot)
+work.dir<-"~/cluster/projects/u19_multiomics"
+options(repr.plot.width=16, repr.plot.height=10)
+```
+
+# Cell-type annotation for scMultiomics dataset
+
+
+## Identifying cell types with scRNA-seq
+
+![UMAP for scRNA-seq data](https://github.com/user-attachments/assets/5295b901-ea7f-4eb8-9f87-4bdd02d3074c)
+
+![Dot plot for marker gene expression](https://github.com/user-attachments/assets/fc758134-cfd0-449f-97ff-ad9f1a58d9ef)
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
