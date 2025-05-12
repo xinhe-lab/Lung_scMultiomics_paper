@@ -31,9 +31,10 @@ options(repr.plot.width=16, repr.plot.height=10)
 
 ## Identifying cell types with scRNA-seq
 
-![UMAP for scRNA-seq data](https://github.com/user-attachments/assets/5295b901-ea7f-4eb8-9f87-4bdd02d3074c)
 
-![Dot plot for marker gene expression](https://github.com/user-attachments/assets/fc758134-cfd0-449f-97ff-ad9f1a58d9ef)
+![UMAP for scRNA-seq data](assets/umap_scRNA.png)
+
+![Dotplot for marker gene expression](assets/dotplot_GE_markers)
 
 ## Including Plots
 
