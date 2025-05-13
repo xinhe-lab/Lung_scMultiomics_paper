@@ -24,6 +24,7 @@ Single-cell multiomics on paired lung and spleen samples from 9 donors (6 contro
 
 ## Results
 
+[annotate cell types for scMultiomics datasets](identify_cell_types.html)
 
 
 
