@@ -40,9 +40,14 @@ stallion = c("1"="#D51F26","2"="#272E6A","3"="#208A42","4"="#89288F","5"="#F47D2
 
 
 ## Annotate clusters in RNA-seq data with marker gene expression
-![UMAP for gene expression of all the cells, split by tissue of origin, with clusters annotated by CellTypist, a machine learning tool developed to predict cell types based on the expression of marker genes. ](assets/umap_scRNA.png)
 
-![Dotplot for expression levels of CD69 and marker genes for immune subsets](assets/dotplot_GE_markers.png)
+UMAP for gene expression of all the cells, split by tissue of origin, with clusters annotated by CellTypist, a machine learning tool developed to predict cell types based on the expression of marker genes. 
+
+![](assets/umap_scRNA.png)
+
+Dotplot for expression levels of CD69 and marker genes for immune subsets
+
+![](assets/dotplot_GE_markers.png)
 
 ## Annotate clusters of ATAC-seq data with majority voting
 
@@ -79,7 +84,9 @@ p4 <- plotTSSEnrichment(ArchRProj = proj)
 ggAlignPlots(p3, p4, type = "h")
 ```
 
-![Fragment size distributions are variable across samples, but overall enriched for sizes of one or two nucleosomes](assets/atac_seq_fragment_size.png)
+Fragment size distributions are variable across samples, but overall enriched for sizes of one or two nucleosomes
+
+![](assets/atac_seq_fragment_size.png)
 
 Clustering of ATAC-seq data shows no strong bias to one batch or one sample.
 
@@ -160,8 +167,9 @@ ggAlignPlots(p1, p2, type = "h")
 
 ### Validating cell type annotations
 
-![Marker genes show high gene scores computed from nearby ATAC-seq peaks for the corresponding cluster.](assets/umap_gene_scores_atac_seq.png)
-```{r message = F, eval = F}
+Marker genes show high gene scores computed from nearby ATAC-seq peaks for the corresponding cluster
+
+```{r message = F}
 markerGenes  <- c(
     "IL4R", "MS4A1", #B-Cell Trajectory
     "GNLY", "CD8B", "LEF1","TCF7", "IL7R", "CTLA4", "FOXP3" #TCells
