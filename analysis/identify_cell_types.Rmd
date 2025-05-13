@@ -80,6 +80,7 @@ ggAlignPlots(p3, p4, type = "h")
 ```
 
 ![Fragment size distributions are variable across samples, but overall enriched for sizes of one or two nucleosomes](assets/atac_seq_fragment_size.png)
+
 Clustering of ATAC-seq data shows no strong bias to one batch or one sample.
 
 ```{r message = F, fig.width = 8}
@@ -196,12 +197,17 @@ Track plots for all peaks within +/-5Kb of TSS of each marker gene
 
 ```{r message = F, results='asis', eval = F}
 
-p <- plotBrowserTrack(
+p_tracks <- plotBrowserTrack(
     ArchRProj = proj, 
-    groupBy = "PredCellType", 
-    geneSymbol = markerGenes, 
-    upstream = 5000,
-    downstream = 5000
+    groupBy = "PredCellType",
+    useGroups = c("Naive_B", "Memory_B", 
+                  "NK", "CD8_T", "CD8/CD4_T", 
+                  "Th17/CD4_T", "Treg"),
+    geneSymbol = markerGenes[1], 
+    pal = pal_atac[-1],
+    threads = 4
+    #upstream = 5000,
+    #downstream = 5000
 )
 
 for(i in p){
