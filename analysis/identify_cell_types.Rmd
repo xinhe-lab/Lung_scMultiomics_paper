@@ -1,5 +1,5 @@
 ---
-title: "Cell-type annotations"
+title: "Annotating cell types for sc-multiomics dataset"
 output:
   html_document: default
   word_document: default
@@ -10,38 +10,203 @@ author: 'Jing Gu'
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-library(Seurat)
-library(data.table)
 library(dplyr)
-library(ggplot2)
-library(plotly)
-library(patchwork)
-library(clusterProfiler)
-library(org.Hs.eg.db)
-library(enrichplot)
-library(GOSemSim)
-library(gridExtra)
-library(slingshot)
+library(ArchR)
+library(liftOver)
+library(eulerr)
+library(ggrepel)
+library(cowplot)
 work.dir<-"~/cluster/projects/u19_multiomics"
 options(repr.plot.width=16, repr.plot.height=10)
+proj <- loadArchRProject("output/u19_multiomics/analyses/u19_peaks_tissue/")
+ct_order <-
+  c(
+  "CD8/CD4_T",
+  "Naive_B",
+  "Memory_B",
+  "NK",
+  "CD8_T",
+  "CD4_T",
+  "Th17/CD4_T",
+  "Treg",
+  "Other"
+)
+#20-colors
+stallion = c("1"="#D51F26","2"="#272E6A","3"="#208A42","4"="#89288F","5"="#F47D2B", "6"="#FEE500","7"="#8A9FD1","8"="#C06CAB","19"="#E6C2DC", "10"="#90D5E4", "11"="#89C75F","12"="#F37B7D","13"="#9983BD","14"="#D24B27","15"="#3BBCA8", "16"="#6E4B9E","17"="#0C727C", "18"="#7E1416","9"="#D8A767","20"="#3D3D3D")
+
 ```
 
-# Cell-type annotation for scMultiomics dataset
+# Identifying lung and spleen immune cell types
 
 
-## Identifying cell types with scRNA-seq
+## Annotate clusters in RNA-seq data with marker gene expression
+![UMAP for gene expression of all the cells, split by tissue of origin, with clusters annotated by CellTypist, a machine learning tool developed to predict cell types based on the expression of marker genes. ](assets/umap_scRNA.png)
 
+![Dotplot for expression levels of CD69 and marker genes for immune subsets](assets/dotplot_GE_markers.png)
 
-![UMAP for scRNA-seq data](assets/umap_scRNA.png)
+## Annotate clusters of ATAC-seq data with majority voting
 
-![Dotplot for marker gene expression](assets/dotplot_GE_markers)
+### Sample QC 
 
-## Including Plots
+COB-5 sample has a small cluster of cells with low number of fragments, so top 5K cells ranked by number of fragments were retained. As a result, we see more consistent distribution from the rigid plots of TSS enrichment and log10 of number of fragments across samples. 
+```{r message = F}
+p1 <- plotGroups(
+    ArchRProj = proj, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+    name = "TSSEnrichment",
+  plotAs = "ridges",
+    baseSize = 12
+)
 
-You can also embed plots, for example:
+p2 <- plotGroups(
+    ArchRProj = proj, 
+    groupBy = "Sample", 
+    colorBy = "cellColData", 
+  name = "log10(nFrags)",
+  plotAs = "ridges",
+    baseSize = 12
+)
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+ggAlignPlots(p1, p2, type = "h") 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Ridge plots for TSS enrichment and log10(nFrags) across samples show a relatively consistent distribution.
+```{r eval = F}
+#too slow
+p3 <- plotFragmentSizes(ArchRProj = proj)
+p4 <- plotTSSEnrichment(ArchRProj = proj)
+ggAlignPlots(p3, p4, type = "h")
+```
+
+![Fragment size distributions are variable across samples, but overall enriched for sizes of one or two nucleosomes](assets/atac_seq_fragment_size.png)
+Clustering of ATAC-seq data shows no strong bias to one batch or one sample.
+
+```{r message = F, fig.width = 8}
+proj@cellColData$Batch <- ifelse(grepl("SMO", proj@cellColData$Sample), "1", "0")
+p1<-plotEmbedding(ArchRProj = proj, colorBy = "cellColData", name = "Batch", embedding = "UMAP") + theme_ArchR(legendTextSize = 12)
+p2<-plotEmbedding(ArchRProj = proj, colorBy = "cellColData", name = "Tissue", embedding = "UMAP") + 
+  theme_ArchR(legendTextSize = 12)
+p3<-plotEmbedding(ArchRProj = proj, colorBy = "cellColData", name = "Status", embedding = "UMAP") + 
+  theme_ArchR(legendTextSize = 12)
+p4<-plotEmbedding(ArchRProj = proj, colorBy = "cellColData", name = "Sample", embedding = "UMAP", ) + 
+  theme_ArchR(legendTextSize = 8)
+ggAlignPlots(p1, p4, type = "h")
+```
+
+Clustering of ATAC-seq data also shows no distinct clusters for either tissue or disease status.
+
+```{r, message = F, fig.width = 8}
+ggAlignPlots(p2, p3, type = "h")
+```
+
+### Cell composition for each cluster of ATAC-seq data 
+
+Majority of clusters were dominated by one single cell type from matched RNA-seq, while two clusters show some ambiguity and so labeled as "CD8/CD4_T" and "Th17/CD4_T".
+
+```{r}
+seRNA <- readRDS("~/cluster/projects/u19_multiomics/analyses/u19_seRNA_summarized_experiment.RDS") 
+colData(seRNA)$CellType <- 
+factor(seRNA$majority_voting,
+       labels = c("NK",
+                  "NK", "Other", 
+                  "Other", "Other",
+                  "Memory_B","Naive_B", "Other",
+                  "Treg", "CD4_T", 
+                  "CD8_T", "Th17")
+       )
+colData(seRNA)$CellType <- factor(
+    colData(seRNA)$CellType,
+    levels = 
+            c("Other", "Treg", "Th17", "CD4_T",
+              "CD8_T", "NK", "Memory_B", "Naive_B"))
+pal <- paletteDiscrete(values = colData(seRNA)$CellType)
+proj@cellColData$PredCellType <-
+  factor(proj@cellColData$PredCellType,
+         levels = rev(ct_order))
+```
+
+```{r, message = F, fig.width = 9}
+plotEmbedding(ArchRProj = proj, colorBy = "cellColData", 
+              name = "Clusters", embedding = "UMAP") + 
+  theme(legend.position = "none")
+pal_atac <- paletteDiscrete(values = proj@cellColData$PredCellType)
+
+ggplot(proj@cellColData,
+       aes(x = Clusters,
+           fill = CellType)) + 
+  geom_bar() + 
+  scale_fill_manual(values = pal) + 
+  theme_classic(base_size = 12) + 
+  ggtitle("Majority of clusters are dominated by a single cell type defined by matched RNA-seq")
+```
+
+UMAP for ATAC-seq data from 100K cells
+
+* left plot - cell labels before majority-voting
+
+* right plot - cell labels after majority-voting
+```{r, message = F, fig.width = 8}
+pal <- paletteDiscrete(values = colData(seRNA)$CellType)
+p1 <- plotEmbedding(ArchRProj = proj, colorBy = "cellColData", 
+              name = "CellType", embedding = "UMAP",
+              pal=pal)
+p2 <-plotEmbedding(ArchRProj = proj, colorBy = "cellColData", 
+              name = "PredCellType", embedding = "UMAP",
+              pal = pal_atac)
+ggAlignPlots(p1, p2, type = "h")
+```
+
+### Validating cell type annotations
+
+![Marker genes show high gene scores computed from nearby ATAC-seq peaks for the corresponding cluster.](assets/umap_gene_scores_atac_seq.png)
+```{r message = F, eval = F}
+markerGenes  <- c(
+    "IL4R", "MS4A1", #B-Cell Trajectory
+    "GNLY", "CD8B", "LEF1","TCF7", "IL7R", "CTLA4", "FOXP3" #TCells
+  )
+
+p_markers <- plotEmbedding(
+    ArchRProj = proj, 
+    colorBy = "GeneScoreMatrix", 
+    name = markerGenes, 
+    embedding = "UMAP",
+    quantCut = c(0.01, 0.95),
+    imputeWeights = getImputeWeights(proj)
+)
+
+p2 <- lapply(p_markers, function(x){
+    x + guides(color = FALSE, fill = FALSE) +
+    # simplify title 
+    ggtitle(strsplit(x$labels$title, ": ")[[1]][2]) + 
+    theme_ArchR(baseSize = 6.5) + 
+    theme(plot.margin = unit(c(0, 0, 0, 0), "cm")) +
+    theme(
+        axis.text.x=element_blank(), 
+        axis.ticks.x=element_blank(), 
+        axis.text.y=element_blank(), 
+        axis.ticks.y=element_blank()
+    )
+})
+
+do.call(plot_grid, c(list(ncol = 3), p2))
+```
+
+Track plots for all peaks within +/-5Kb of TSS of each marker gene 
+
+```{r message = F, results='asis', eval = F}
+
+p <- plotBrowserTrack(
+    ArchRProj = proj, 
+    groupBy = "PredCellType", 
+    geneSymbol = markerGenes, 
+    upstream = 5000,
+    downstream = 5000
+)
+
+for(i in p){
+  grid::grid.draw(i)
+}
+```
+
+
