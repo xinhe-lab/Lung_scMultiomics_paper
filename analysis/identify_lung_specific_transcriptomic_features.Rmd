@@ -14,6 +14,7 @@ library(rtracklayer)
 library(GenomicRanges)
 library(colorRamp2)
 library(scales)
+library(htmltools)
 library(ComplexHeatmap)
 set.seed(1)
 ct_order <-
@@ -148,8 +149,8 @@ ggVennDiagram(sp_lt, force_upset = TRUE)
 ### GO enrichment results
 
 **Lung-regulated genes**
-```{r, fig.width = 10, results='asis'}
-name_order <- c("common", "Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
+```{r, fig.width = 10}
+name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/lung_upreg_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
 go_tbl <- go_tbl[go_tbl$database != "disease_OMIM", ]
@@ -167,7 +168,7 @@ ggList <-
   })
 
 lapply(1:length(ggList), function(i){
-  ggplot(ggList[[i]] %>% mutate(k = factor(k, levels = name_order)), 
+  ggplot(ggList[[i]] %>% mutate(k = factor(k, levels = c("common", name_order))), 
        aes(x = k, y = description, fill = enrichment)) + 
     geom_tile() + scale_fill_gradient2(midpoint = 1, 
                                        limits = c(0, 10),
@@ -195,7 +196,6 @@ browsable(tagList(lapply(split(go_tbl, go_tbl$database), function(i) {
 
 The DE genes down-regulated in lung detected from memory B cells are significantly enriched for asthma risk genes from KEGG pathway. The overlapped genes are HLA genes and *CD40*. Their function in B cells might be enhancing subsequent interaction with T cells.
 ```{r, fig.width = 8}
-name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
 go_tbl <- go_tbl[go_tbl$database != "disease_OMIM" & go_tbl$k != "common", ]
@@ -271,6 +271,13 @@ col_fun <- colorRamp2(
 barplot(table(kmean_outs$cluster),
         main = "Number of genes in each k-mean cluster")
 
+print("The pair-wise correlation of genes for most clusters form a distribution skewed to 1.")
+par(mfrow = c(4, 4))
+h_list <- lapply(unique(kmean_outs$cluster), function(i){
+  hist(cor(t(gginput[kmean_outs$cluster == i, -1])), 
+       main = paste0("cluster ", i), xlab = "correlation")
+})
+
 Heatmap(kmean_outs$center,
         #col = col_fun,
         cluster_rows = F,
@@ -278,6 +285,9 @@ Heatmap(kmean_outs$center,
         column_order = name_order,
         width = 16*unit(4, "mm"), 
         name = "average log2FC")
+
+kmean_full_list <- 
+  lapply(split(gginput, kmean_outs$cluster), function(i){i$gene})
 ```
 
 Heatmap for average log2FC for each cell-type (Memory B excluded)
