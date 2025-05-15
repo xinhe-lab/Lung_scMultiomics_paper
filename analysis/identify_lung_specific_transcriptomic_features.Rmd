@@ -156,7 +156,7 @@ Overall, lung up-regulated genes are enriched for immune-related hallmark gene s
 name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/lung_upreg_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
-go_tbl <- go_tbl[go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
+go_tbl <- go_tbl[!go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
 top <- 
   go_tbl %>% 
     filter(FDR < 0.01) %>%
@@ -204,7 +204,7 @@ The DE genes down-regulated in lung detected from memory B cells are significant
 ```{r, fig.width = 8}
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
-go_tbl <- go_tbl[go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
+go_tbl <- go_tbl[!go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
 go_tbl <- go_tbl[go_tbl$k != "common", ]
 top <- 
   go_tbl %>% 
@@ -244,7 +244,7 @@ browsable(tagList(lapply(split(go_tbl, go_tbl$database), function(i) {
 ```
 
 
-### K-means clustering for log2FC
+## Summarizing DE genes by effect sizes
 
 We performed K-means clustering over log2FC for all genes with at most one NA across cell types. 
 
@@ -344,7 +344,7 @@ Several clusters were selected by having distinct cluster mean in one cell type 
 name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/kmeans_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
-go_tbl <- go_tbl[go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
+go_tbl <- go_tbl[!go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
 
 top <- 
   go_tbl %>% 
