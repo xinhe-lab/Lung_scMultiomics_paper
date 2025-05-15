@@ -148,12 +148,15 @@ ggVennDiagram(sp_lt, force_upset = TRUE)
 
 ### GO enrichment results
 
-**Lung-regulated genes**
+**Lung Up-regulated genes**
+
+Overall, lung up-regulated genes are enriched for immune-related hallmark gene sets and GO terms for T cell activation, response to cytokines, and regulation of cell adhesion. Particularly, lung-specific genes in CD4+T and memory B cells are enriched for Th1/Th2 differentiation. 
+
 ```{r, fig.width = 10}
 name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/lung_upreg_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
-go_tbl <- go_tbl[go_tbl$database != "disease_OMIM", ]
+go_tbl <- go_tbl[go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
 top <- 
   go_tbl %>% 
     filter(FDR < 0.01) %>%
@@ -192,14 +195,17 @@ browsable(tagList(lapply(split(go_tbl, go_tbl$database), function(i) {
 })))
 ```
 
-**Spleen-regulated genes**
+**Spleen Up-regulated genes**
+
+Overall, spleen up-regulated genes are less enriched for GO terms at a higher threshold at FDR < 0.1.
 
 The DE genes down-regulated in lung detected from memory B cells are significantly enriched for asthma risk genes from KEGG pathway. The overlapped genes are HLA genes and *CD40*. Their function in B cells might be enhancing subsequent interaction with T cells.
+
 ```{r, fig.width = 8}
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
-go_tbl <- go_tbl[go_tbl$database != "disease_OMIM" & go_tbl$k != "common", ]
-
+go_tbl <- go_tbl[go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
+go_tbl <- go_tbl[go_tbl$k != "common", ]
 top <- 
   go_tbl %>% 
     filter(FDR < 0.1) %>%
@@ -241,6 +247,7 @@ browsable(tagList(lapply(split(go_tbl, go_tbl$database), function(i) {
 ### K-means clustering for log2FC
 
 We performed K-means clustering over log2FC for all genes with at most one NA across cell types. 
+
 ```{r}
 duplicates <- 
   DGE_tbl %>% #filter(cluster != "Other" & p_val_adj <= 0.05 & avg_log2FC > 0.58) %>%
@@ -257,19 +264,11 @@ gginput <-
 gginput <- gginput[rowSums(is.na(gginput)) <= 1, ]
 gginput[is.na(gginput)] <- 0
 ```
-Heatmap for average log2FC for each cluster
 
-Clustering for effect sizes does not show cell type specificity except for memory B cells.
-
-```{r}
+```{r fig.height = 10}
 kmean_outs<- kmeans(gginput[, -1], centers = 16)
-col_fun <- colorRamp2(
-  breaks = c(-5, 0, 5),
-  colors = c("blue", "white", "red")
-)
-
-barplot(table(kmean_outs$cluster),
-        main = "Number of genes in each k-mean cluster")
+print("Number of genes in each k-mean cluster:")
+table(kmean_outs$cluster)
 
 print("The pair-wise correlation of genes for most clusters form a distribution skewed to 1.")
 par(mfrow = c(4, 4))
@@ -278,6 +277,19 @@ h_list <- lapply(unique(kmean_outs$cluster), function(i){
        main = paste0("cluster ", i), xlab = "correlation")
 })
 
+
+kmean_full_list <- 
+  lapply(split(gginput, kmean_outs$cluster), function(i){i$gene})
+```
+Heatmap for average log2FC for each cluster
+
+Clustering for effect sizes does not show cell type specificity except for memory B cells.
+
+```{r}
+col_fun <- colorRamp2(
+  breaks = c(-5, 0, 5),
+  colors = c("blue", "white", "red")
+)
 Heatmap(kmean_outs$center,
         #col = col_fun,
         cluster_rows = F,
@@ -285,12 +297,11 @@ Heatmap(kmean_outs$center,
         column_order = name_order,
         width = 16*unit(4, "mm"), 
         name = "average log2FC")
-
-kmean_full_list <- 
-  lapply(split(gginput, kmean_outs$cluster), function(i){i$gene})
 ```
 
+
 Heatmap for average log2FC for each cell-type (Memory B excluded)
+
 
 Clustering for effect sizes shows stronger cell-type specificity.
 
@@ -327,11 +338,13 @@ go_inputs$MemB_hi3 <- kmean_list$`3`
 
 ```
 
+Several clusters were selected by having distinct cluster mean in one cell type compared to the rest to perform GSEA. The pattern is less clear to me. Currently all genes contained in each cluster were used to perform GSEA, so I may try top hundreds of genes for the analysis.
+
 ```{r, fig.width = 12}
 name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
 go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/kmeans_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
-go_tbl <- go_tbl[go_tbl$database != "disease_OMIM", ]
+go_tbl <- go_tbl[go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
 
 top <- 
   go_tbl %>% 
