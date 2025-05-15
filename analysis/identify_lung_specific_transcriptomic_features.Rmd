@@ -5,7 +5,7 @@ date: '`r Sys.Date()`'
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = F)
 library(ArchR)
 library(dplyr)
 library(tidyr)
@@ -87,7 +87,7 @@ ggplot(
       fill = group)) + 
   theme_bw(base_size  = 15) + 
   geom_col(position = "dodge2", width = 0.7) +
-  #theme_ArchR(baseSize = 15, legendTextSize = 15) + 
+  theme_ArchR(baseSize = 15, legendTextSize = 15) + 
   #geom_label(size = 2, position = position_dodge2()) + 
   xlab("") + ylab("Numer of DE genes with at least two fold change") + 
   ggtitle("Majority of DE genes were detected from memory B cells for both tissues")
@@ -180,7 +180,7 @@ lapply(1:length(ggList), function(i){
 
 ```
 
-```{r}
+```{r, results='asis'}
 lapply(split(go_tbl, go_tbl$database), function(i){
   htmltools::tagList(
         DT::datatable(
@@ -226,7 +226,7 @@ lapply(1:length(ggList), function(i){
 })
 ```
 
-```{r}
+```{r, results='asis'}
 lapply(split(go_tbl, go_tbl$database), function(i){
   htmltools::tagList(
         DT::datatable(
@@ -281,6 +281,7 @@ Heatmap(kmean_outs$center,
         width = 16*unit(4, "mm"), 
         name = "average log2FC")
 ```
+
 Heatmap for average log2FC for each cell-type (Memory B excluded)
 
 Clustering for effect sizes shows stronger cell-type specificity.
@@ -349,7 +350,7 @@ lapply(1:length(ggList), function(i){
 ```
 
 
-```{r}
+```{r, results='asis'}
 lapply(split(go_tbl, go_tbl$database), function(i){
   htmltools::tagList(
         DT::datatable(
