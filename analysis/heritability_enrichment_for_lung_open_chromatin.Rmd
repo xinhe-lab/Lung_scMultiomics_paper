@@ -1,0 +1,726 @@
+---
+title: "Assessing heritability enrichment for lung OCRs "
+output: html_document
+date: '`r Sys.Date()`'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = F)
+library(dplyr)
+library(tidyr)
+library(ArchR)
+library(eulerr)
+library(colorRamp2)
+library(scales)
+library(liftOver)
+library(cowplot)
+set.seed(10)
+ct_order <-
+  c(
+  "Naive_B",
+  "Memory_B",
+  "NK",
+  "CD8_T",
+  "CD8.CD4_T",
+  "CD4_T",
+  "Th17.CD4_T",
+  "Treg"
+)
+ct_order_2 <- c(
+  "Naive_B",
+  "Memory_B",
+  "NK",
+  "CD8_T",
+  "CD4_T",
+  "Th17",
+  "Treg"
+)
+source("~/projects/funcFinemapping/code/make_plots.R")
+#proj <- loadArchRProject("~/cluster/projects/u19_multiomics/analyses/u19_peaks_tissue")
+ch=import.chain("~/resources/genomes/chain_files/hg19ToHg38.over.chain")
+trait_snp_h2g <- 
+  data.frame(
+    trait = c("Height", "BMI", "Allergy", "AtopicDermatitis", "AOA", "COA", "IPF", "COPD"),
+    perSNPh2g = c(0.53, 0.217, 0.0804, 0.0121, 0.03, 0.0427, 0.0038, 0.0173)/5961159)
+```
+
+# Compare and contrast between lung and blood
+
+## Peak overlapping 
+
+### Barplots to show peaks shared with blood or not
+
+```{r eval = F}
+count_tbl <- 
+  sapply(c("B", "NK", "T"), function(i){
+    counts <- length(unique(as.character(d_main[[paste0("Lung_", i)]])))
+    hits <-
+      findOverlaps(d_main[[paste0("Lung_", i)]],
+                     d_main[[paste0("Blood_", i)]])
+    return(c(counts-length(unique(hits@from)), length(unique(hits@from))))
+  })
+
+rownames(count_tbl) <- c("not shared", "shared")
+ggplot(
+  data.frame(count_tbl) %>%
+    mutate(group = rownames(count_tbl)) %>%
+    pivot_longer(1:3,
+                 values_to = "counts",
+                 names_to = "CellType"),
+  aes(y = counts,
+      x = CellType,
+      fill = group)) +
+  geom_col(width = 0.4) + xlab("")  + ylab("Number of Peaks") + 
+  scale_y_continuous(breaks = seq(0, 150000, 50000),
+                     labels = c("0", paste0(seq(0, 150, 50), "K")[-1])) + 
+  theme_ArchR(baseSize = 15, legendTextSize = 15)
+```
+```{r, fig.width = 11}
+load("output/u19_multiomics/output/peakCalling/peaks_called_by_TissueCellType.RData")
+# d_major$Lung_CD4_T <- 
+#   c(d_major$Lung_CD4_T, d_major$Lung_CD8.CD4_T, d_major$Lung_Th17.CD4_T)
+fpath <- "~/cluster/data/features/formatted/Benaglio2023"
+blood_list <- list()
+for(i in c(ct_order[1:4], "CD4_T", "tReg")){
+  bed <- fread(sprintf("%s/scBlood_%s.bed", fpath, i))
+  cur <- GRanges(seqnames = bed$V1,
+                 ranges = IRanges(start = bed$V2,
+                 end = bed$V3))
+  seqlevelsStyle(cur) <- "UCSC"  # necessary
+  if(i == "tReg"){i = "Treg"}
+  blood_list[[paste0("Blood_", i)]] <- unlist(liftOver(cur, ch))
+}
+
+count_tbl <-
+  sapply(ct_order, function(i) {
+    counts <- length(unique(as.character(d_major[[paste0("Lung_", i)]])))
+    # match lung CD4_T subsets with blood CD4_T
+    if(grepl("[.]", i) == TRUE){
+      new_i <- strsplit(i, "[.]")[[1]][2]
+    }else{
+      new_i = i
+    }
+    hits <-
+      findOverlaps(d_major[[paste0("Lung_", i)]],
+                   blood_list[[paste0("Blood_", new_i)]])
+    return(c(counts - length(unique(hits@from)), length(unique(hits@from))))
+  })
+
+rownames(count_tbl) <- c("not shared", "shared")
+
+# remove CD8.CD4T
+# count_tbl <- count_tbl[, colnames(count_tbl) != "CD8.CD4_T"]
+# colnames(count_tbl)[ncol(count_tbl)-1] <- "Th17"
+ggplot(
+  data.frame(count_tbl) %>%
+    mutate(group = rownames(count_tbl)) %>%
+    pivot_longer(!group,
+                 values_to = "counts",
+                 names_to = "CellType"),
+  aes(
+    y = counts,
+    x = factor(CellType, 
+               #levels = ct_order_2),
+               labels = gsub("[.]", "/", ct_order)),
+    fill = group
+  )
+) +
+  geom_col(width = 0.6) + xlab("")  +
+  scale_y_continuous(breaks = seq(0, 125000, 25000),
+                     labels = c(0, paste0(seq(0, 125, 25), "K")[-1])) + 
+  ylab("Number of OCRs") + 
+  scale_fill_discrete() +
+  theme_ArchR(legendTextSize = 15, baseSize = 15)
+```
+### Venn Diagram to compare against a union set of peaks
+
+Lung and Blood peaks were called by different procedures. Lung peaks have fixed size (500bp), while blood peaks have sizes ranging from 200 to 5K bp. To make comparison, I first made a union set of peaks and then comparing peaks from each tissue against the union set. 
+
+```{r}
+d_main <- readRDS("output/u19_multiomics/output/peakCalling/reproducible_peaks_list_hg38.RDS")
+
+# anchor on Lung B, mapping everything to Lung B
+get_eulerr_inputs <- function(set1, set2){
+  d_union <- unique(union(d_main[[set1]], d_main[[set2]]))
+  common <- intersect(unique(findOverlaps(d_main[[set1]], d_union)@to), 
+                unique(findOverlaps(d_main[[set2]], d_union)@to))
+  nset1_only = length(setdiff(findOverlaps(d_main[[set1]], d_union)@to, common))
+  nset2_only = length(setdiff(findOverlaps(d_main[[set2]], d_union)@to, common))
+  return(c(nset1_only, length(common), nset2_only))
+}
+
+p1<-
+  euler(
+    c("Lung_B" = get_eulerr_inputs("Lung_B", "Blood_B")[1],
+      "Blood_B" = get_eulerr_inputs("Lung_B", "Blood_B")[3],
+      "Lung_B&Blood_B" = get_eulerr_inputs("Lung_B", "Blood_B")[2])
+    )
+
+p2<-
+  euler(
+    c("Lung_T" = get_eulerr_inputs("Lung_T", "Blood_T")[1],
+      "Blood_T" = get_eulerr_inputs("Lung_T", "Blood_T")[3],
+      "Lung_T&Blood_T" = get_eulerr_inputs("Lung_T", "Blood_T")[2])
+    )
+
+p3<-
+  euler(
+    c("Lung_NK" = get_eulerr_inputs("Lung_NK", "Blood_NK")[1],
+      "Blood_NK" = get_eulerr_inputs("Lung_NK", "Blood_NK")[3],
+      "Lung_NK&Blood_NK" = get_eulerr_inputs("Lung_NK", "Blood_NK")[2])
+    )
+
+plot_grid(
+  plot(p3, quantitie = list(type = c("percent", "counts"))),
+  plot(p1, quantitie = list(type = c("percent", "counts"))),
+  plot(p2, quantitie = list(type = c("percent", "counts"))))
+```
+## heritability enrichment with S-LDSC 
+
+```{r echo = F, eval = F}
+# get a union set of blood and lung peaks 
+library(liftOver)
+library(GenomicRanges)
+ch=import.chain("~/resources/genomes/chain_files/hg38ToHg19.over.chain")
+cur <- c(d_main$Lung_NK, d_main$Lung_B, d_main$Lung_T)
+seqlevelsStyle(cur) <- "UCSC"  # necessary
+cur19 <- unlist(liftOver(cur, ch))
+
+blood <- fread("~/cluster/data/features/formatted/Benaglio2023/scBlood_merge.bed")
+blood_gr <- GRanges(seqnames = blood$V1, 
+                    range = IRanges(start = blood$V2, 
+                                    end = blood$V3))
+bed <- data.frame(GenomicRanges::union(blood_gr, cur19))[, 1:3]
+bed$seqnames <- gsub("chr", "", bed$seqnames)
+write.table(bed, "~/cluster/data/features/formatted/u19_multiomics/joint_set/Lung_Blood_merge.bed",
+            quote = F, row.names = F, sep = "\t", col.names = F) 
+```
+
+
+```{r}
+# make a summary table for LDSC outputs from individual test
+make_summary_table <- 
+  function(traits, 
+           referenceTab, # a table of two columns: input annotations and displayed annotations
+           baseline="baseline_v1.2"
+           ){
+  
+  output_df<-c()
+  for (trait in traits){
+    for (annot in referenceTab[,1]){
+      f<-read.table(
+        sprintf("~/cluster/projects/ldsc_enrichment/%s/%s/%s.results", 
+              trait, baseline, annot), header = T)
+      output_df<-rbind(output_df, cbind(trait, f[!grepl("L2_0", f$Category), ]))
+      }
+  }
+  
+  # trim off suffix of labels
+  output_df$Category <- unlist(
+      lapply(output_df$Category, function(i){strsplit(i, "L2")[[1]][1]})
+      )
+  
+  #change trait name and order
+  
+  output_df$trait<-
+  factor(output_df$trait,
+        levels = c("height", "bmi", "LDL", "HDL", "scz", "allergy", "AtopicDermatitis", "aoa_ukb", "coa_ukb", "IPF", "COPD"),
+        labels = c("Height", "BMI", "LDL", "HDL", "SCZ", "Allergy", "AtopicDermatitis", "AOA", "COA", "IPF", "COPD"))
+    
+  return(output_df) 
+  }
+
+compute_tau_star <- function(ldsc_tbl, annotations){
+  # compute tau*
+  sd_annot <-
+    data.frame(Category = annotations[, 2],
+               annot_std_error = unlist(lapply(annotations[, 2], function(i){estimate_sd_annot(i)})))
+  
+  ldsc_tbl <- left_join(ldsc_tbl, trait_snp_h2g, by = "trait")
+  ldsc_tbl <- left_join(ldsc_tbl, sd_annot, by = "Category")
+  ldsc_tbl$tau_star <-  ldsc_tbl$Coefficient/ldsc_tbl$perSNPh2g * ldsc_tbl$annot_std_error
+  
+  corr_ldsc_tbl <-
+    ldsc_tbl %>%
+    mutate(
+      tar_star_se = Coefficient_std_error / perSNPh2g *
+        annot_std_error,
+      tau_star_p = format(pnorm(-abs(Coefficient_z.score)) * 2,
+                          scientific = TRUE, digit = 1),
+      tau_star = round(tau_star, 1),
+      trait = factor(trait, levels = c(
+        "Height", "BMI",  "Allergy", "AtopicDermatitis", "AOA", "COA", "IPF", "COPD"))
+      )
+  return(corr_ldsc_tbl)
+}
+
+
+```
+
+### One focal cell-type vs. lung and blood union set
+
+```{r taustar, eval = F}
+get_sd_annot = function(cell_path, annot_index = 1, flag=1){
+  if(flag == 0){
+    if(file.exists(paste0(cell_path, "/", "sd_annot_", annot_index, ".rda"))){
+        sd_annot = get(load(paste0(cell_path, "/", "sd_annot_", annot_index, ".rda")))
+        return(sd_annot)
+    }else{
+    	flag = 1
+    }}
+
+    if(flag == 1){
+    	num = 0
+        den = 0
+        ll <- list.files(cell_path, pattern = ".annot.gz")
+        for(m in 1:length(ll)){
+            f <- fread(paste0(cell_path, "/", ll[m]))
+            dat <- data.frame(f)
+            num = num  + (nrow(dat)-1) * var(dat[, 1])
+            den = den + (nrow(dat)-1)
+            rm(dat)
+       }
+    }
+
+  estd_sd_annot = sqrt(num/den)
+  #save(estd_sd_annot, file = paste0(cell_path, "/", "sd_annot_", annot_index, ".rda"))
+  return(estd_sd_annot)
+}
+
+
+run_single_tau_analysis = function(annot_cell,
+                                   results_cell,
+                                   annotations,
+                                   traits,
+                                   index_in_results=1,
+                                   base_index = NULL,
+                                   flag = 1){
+    if(is.null(base_index)){base_index = index_in_results}
+    tau_star_table = matrix(0, nrow(annotations), 3)
+    tau_star_list <- list()
+    for(annot_id in 1:nrow(annotations)){
+        cell_path = paste0(annot_cell, "/", annotations[annot_id, 1])
+        sd_annot1=get_sd_annot(cell_path, annot_index=index_in_results, flag = flag)
+        Mref = 5961159
+        df = c()
+        for(trait_id in 1:length(traits)){
+            result.file=paste0(results_cell, "/", traits[trait_id], "/baseline_v1.2/", annotations[annot_id, 2], ".part_delete")
+            new_table=read.table(result.file,header=F)
+            sc=c()
+            logfile = paste(results_cell, "/", traits[trait_id], "/baseline_v1.2/", annotations[annot_id, 2], ".log", sep="")
+            log = read.table(logfile,h=F,fill=T)
+            h2g = as.numeric(as.character(log[which(log$V4=="h2:"),5]))
+            coef1=sd_annot1*Mref/h2g
+            for(i in 1:dim(new_table)[1]){
+                  tau1=as.numeric(new_table[i,base_index])
+                  taus1=tau1*coef1
+                  sc=c(sc,taus1)
+                  #cat("Block ", i, "\n")
+            }
+            mean_sc=mean(sc)
+            se_sc=sqrt(199**2/200*var(sc))
+            df = rbind(df, c(mean_sc,se_sc))
+        }
+        df <- data.frame(df)
+        rownames(df) <- traits
+        colnames(df) <- c("mean_sc", "se_sc")
+        df$pval <- 2*pnorm(-abs(df$mean_sc/df$se_sc))
+        df$CellType <- annotations[annot_id, 1]
+        df$trait <- traits
+        tau_star_list[[annotations[annot_id, 1]]] <- df
+        test_tauj=meta.summaries(df[,1],df[,2],method="random")
+        tau=test_tauj$summary
+        tau_se=test_tauj$se.summary
+        z=tau/tau_se
+        cat("Printing results for annotation:", annotations[annot_id, 1], "\n")
+        cat(tau, " ", tau_se, " ", 2*pnorm(-abs(z)), "\n")
+        tau_star_table[annot_id, ] = c(tau, tau_se, 2*pnorm(-abs(z)))
+    }
+    rownames(tau_star_table) = annotations[, 1]
+    return(tau_star_list)
+}
+
+```
+
+```{r eval = F}
+annot_cell = "/home/jinggu/cluster/projects/ldsc_enrichment/ldscore"
+results_cell = "~/cluster/projects/ldsc_enrichment"
+annotations <- data.frame(
+  annotations = paste0("Lung_", c("CD4_T", "CD8_T", "Naive_B", "Memory_B", "NK", "Th17_T", "Treg_T", "CD8.CD4_T")),
+  annot_id = paste0("Joint_", c("CD4T", "CD8T", "NaiveB", "MemB", "NK", "Th17", "Treg", "CD8.CD4T"), "_ct")
+)
+tau_star_list <- 
+  run_single_tau_analysis(annot_cell, results_cell, annotations = annotations, traits = trait_list,
+                                index_in_results = 55 , flag = 1)
+```
+```{r, eval = F}
+### Confirming the tau star statistics we calculated consistent with those in the paper (Kim et al. 2024)
+
+correct_tbl$tau_star_p <- correct_tbl$Enrichment_p
+comparison <- left_join(ref_tbl, correct_tbl[, c("Category", "trait", "tau_star", "tau_star_p")], by = c("Category", "trait"))
+par(mfrow = c(1,2))
+plot(comparison$Enrichment_p, comparison$tau_star_p)
+plot(comparison$Enrichment, comparison$tau_star)
+```
+
+```{r, fig.height = 5, fig.width = 14, eval = F}
+ldsc_tbl <- do.call(rbind, tau_star_list)
+colnames(ldsc_tbl) <- c("Enrichment", "Enrichment_std_error", "Enrichment_p", "Category", "trait")
+ldsc_tbl$trait<-
+  factor(ldsc_tbl$trait,
+        levels = c("height", "bmi", "allergy","aoa_ukb", "coa_ukb"),
+        labels = c("Height", "BMI",  "Allergy",  "AOA", "COA"))
+
+snp_enrichment_plot(ldsc_tbl %>% mutate(Category = factor(Category)), 
+                    log.based = F, dot.size = 2, textVjust = -0.8,
+                    label.size = 4, tolabel = "pval") + 
+  facet_grid(. ~ trait) + xlab("tau* enrichment")
+```
+
+```{r, fig.height = 5, fig.width = 16}
+trait_list <- c("height", "bmi", "allergy", "AtopicDermatitis", "aoa_ukb", "coa_ukb", "IPF", "COPD")
+
+annotations <- data.frame(
+  annot_id = paste0("Joint_", c("CD4T", "CD8T", "NaiveB", "MemB", "NK", "Th17", "Treg", "CD8.CD4T"), "_ct"),
+  annotations = paste0("Lung_", c("CD4_T", "CD8_T", "Naive_B", "Memory_B", "NK", "Th17_T", "Treg_T", "CD8.CD4_T"))
+)
+
+
+ldsc_tbl<-make_summary_table(traits = trait_list, 
+                             referenceTab = annotations,
+                             baseline="baseline_v1.2")
+
+ldsc_tbl <- ldsc_tbl[ldsc_tbl$Category != "lung_blood_merge", ]
+ldsc_tbl$Category[ldsc_tbl$Category == "Lung_CD8"] <- "Lung_CD8.CD4_T"
+
+
+#annotations <- rbind(annotations, c("lung_blood_merge", "lung_blood_merge"))  
+correct_tbl <- compute_tau_star(ldsc_tbl, annotations)
+
+correct_ldsc_tbl <-
+  correct_tbl %>%
+  mutate(Category = factor(Category,
+                           levels = c("Lung_Naive_B", "Lung_Memory_B", "Lung_NK", "Lung_CD8_T", "Lung_CD8.CD4_T", 
+                           "Lung_CD4_T", "Lung_Th17_T", "Lung_Treg_T"),
+                           labels = gsub("[.]", "/", ct_order)))
+
+snp_enrichment_plot(correct_ldsc_tbl %>% filter(trait != "AtopicDermatitis"), 
+                    log.based = F, dot.size = 2, textVjust = -0.8,
+                    label.size = 4, tolabel = "tau_p") + xlim(-5, 40) + 
+  facet_grid(. ~ trait) 
+```
+
+**Bubble plot**
+
+```{r}
+GO_enrichment_plot <- function(gginput, color_scale = NULL, title){
+  p <-
+  ggplot(gginput, 
+       aes(x = k, y = description, color = enrichment, size = -log10(FDR))) + 
+       geom_point() + scale_color_gradient2(midpoint = 1, 
+                                           limits = color_scale,
+                                           oob = scales::squish) + 
+    xlab("") + ylab("") + 
+    theme_ArchR(legendPosition = "right") + ggtitle(title)
+  return(p)
+}
+```
+
+```{r, fig.width = 12}
+ggplot(
+  correct_ldsc_tbl %>%
+    #mutate(Category = gsub("Th17/CD4_T", "Th17", Category)) %>%
+    #filter(Category != "CD8/CD4_T") %>%
+    mutate(p_value= as.numeric(tau_star_p)),
+  aes(
+    x = trait,
+    y = Category,
+    colour = -log10(p_value),
+    size = Enrichment
+  )
+) +
+  scale_colour_viridis_c(alpha = 0.9) + 
+  scale_size_continuous() + 
+geom_point() + xlab("") + ylab("") + 
+  theme_ArchR(baseSize = 13, legendTextSize = 12, legendPosition = "right")
+```
+
+
+### Individual test across lung and blood major lymphocytes
+
+For individual test, the quantity of heritability enrichment is used to demonstrate overall contribution of each annotation. We can use p-values for cell-type specific coefficients to compare their contributions across cell types. 
+
+Legends:
+
+* x-axis: heritability enrichment 
+* p-values on top of the data points: p-values for tau*
+
+All lung and spleen lymphocytes show significant enrichment for genetic risks of asthma and related diseases, but not for BMI and height. B cells are less significant than T and NK cells.
+
+```{r fig.width = 10, fig.height = 4}
+tissues <- c("Lung", "scBlood")
+ct_order <- c("B", "NK", "T")
+trait_list <- c("height", "bmi", "allergy", "aoa_ukb", "coa_ukb")
+annotations <- unlist(lapply(ct_order, function(i){paste(tissues, i, sep="_")}))
+annotations <- cbind(annotations, annotations)
+annotations[, 2] <- gsub("scBlood", "Blood", annotations[, 2])
+  
+ldsc_tbl<-make_summary_table(traits = trait_list, 
+                             referenceTab = annotations,
+                             baseline="baseline_v1.2")
+
+snp_enrichment_plot(ldsc_tbl, 
+                    log.based = F, dot.size = 2, textVjust = -0.8,
+                    label.size = 4, tolabel = "pval") + 
+  xlim(c(-8, 35)) + 
+  facet_grid(. ~ trait) + 
+  theme_ArchR() + theme(legend.position = "none")
+```
+
+### Joint test of lung and blood separately for each major lymphocyte
+
+Compared with blood, open chromatin regions of lung T cells are significantly enriched for genetic risks of allergy, atopic dermatitis, and asthma, but not for control traits as well as IPF and COPD. Lung NK cells also show moderate enrichment.
+
+```{r fig.width = 16, fig.height = 5}
+trait_list <- c("height", "bmi", "allergy", "aoa_ukb", "coa_ukb", "IPF", "COPD", "AtopicDermatitis")
+ldsc_tbl <- c()
+for (trait in trait_list) {
+  for (c in c("T", "B", "NK")){
+    f <- read.table(sprintf("~/cluster/projects/ldsc_enrichment/%s/baseline_v1.2/Joint_2%s.results", trait, c), 
+                    header = T)
+    f <- f[!grepl("L2_0", f$Category), ]
+    f$Category <- unlist(
+      lapply(f$Category, function(i){strsplit(i, "L2")[[1]][1]})
+      )
+    ldsc_tbl<- 
+      rbind(ldsc_tbl, cbind(trait, c, f))
+  }
+
+}
+
+# change trait name and order
+ldsc_tbl$trait<-
+  factor(ldsc_tbl$trait,
+        levels = c("height", "bmi", "allergy", "AtopicDermatitis", "aoa_ukb", "coa_ukb", "IPF", "COPD"),
+        labels = c("Height", "BMI",  "Allergy", "AtopicDermatitis", "AOA", "COA", "IPF", "COPD"))
+
+tissues <- c("Lung", "scBlood")
+ct_order <- c("B", "NK", "T")
+annotations <- unlist(lapply(ct_order, function(i){paste(tissues, i, sep="_")}))
+annotations <- cbind(annotations, gsub("scBlood", "Blood", annotations))
+
+
+# change order and labels
+ldsc_tbl$Category <- factor(ldsc_tbl$Category,
+                      levels = annotations[, 1],
+                      labels = annotations[, 2])
+
+# compute tau*
+sd_annot <-
+  data.frame(Category = annotations[, 2],
+             annot_std_error = unlist(lapply(annotations[, 1], function(i){estimate_sd_annot(i)})))
+
+ldsc_tbl <- left_join(ldsc_tbl, trait_snp_h2g, by = "trait")
+ldsc_tbl <- left_join(ldsc_tbl, sd_annot, by = "Category")
+ldsc_tbl$tau_star <-  ldsc_tbl$Coefficient/ldsc_tbl$perSNPh2g * ldsc_tbl$annot_std_error
+
+corr_ldsc_tbl <-
+  ldsc_tbl %>%
+  filter(!grepl("Spleen", Category)) %>%
+  mutate(
+    Enrichment = tau_star,
+    Enrichment_std_error = Coefficient_std_error / perSNPh2g *
+      annot_std_error,
+    Enrichment_p = pnorm(-abs(Coefficient_z.score)) * 2,
+    Category = 
+      factor(Category,
+             levels = unlist(lapply(ct_order, function(i){paste(c("Lung", "Blood"), i, sep="_")}))),
+    trait = factor(trait, levels = c(
+      "Height", "BMI",  "Allergy", "AtopicDermatitis", "AOA", "COA", "IPF", "COPD"))
+    )
+
+snp_enrichment_plot(
+  corr_ldsc_tbl,
+  log.based = F,
+  dot.size = 2,
+  label.size = 4,
+  textVjust = -0.8,
+  tolabel = "pval",
+  split.data = "c"
+) +
+  xlab("tau* enrichment") +  
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  theme_ArchR(baseSize = 12) + theme(legend.position = "none") + 
+  facet_grid(. ~ trait)
+
+```
+
+Joint test of lung and blood T subsets
+
+* Lung regulatory T cells show significant enrichment across all asthma and related diseases
+* Lung CD4+ T, CD8+T and Th17 cells show enrichment for genetic risks of specific traits.  
+* Activating CD4+ T cells in blood consistently show enrichment for risks of atopic dermatitis.
+
+
+```{r fig.width = 14, fig.height = 4}
+ldsc_tbl <- c()
+for (trait in trait_list) {
+  for (c in c("RegT", "CD4T", "CD8T", "Th17")) {
+    f <- read.table(sprintf("~/cluster/projects/ldsc_enrichment/%s/baseline_v1.2/Joint_%s.results", trait, c), 
+                    header = T)
+    f <- f[!grepl("L2_0", f$Category), ]
+    f$Category <- unlist(
+      lapply(f$Category, function(i){strsplit(i, "L2")[[1]][1]})
+      )
+    ldsc_tbl<- 
+      rbind(ldsc_tbl, cbind(trait, c, f))
+  }
+}
+
+# change trait name and order
+ldsc_tbl$trait<-
+  factor(ldsc_tbl$trait,
+        levels = c("height", "bmi", "allergy", "AtopicDermatitis", "aoa_ukb", "coa_ukb", "IPF", "COPD"),
+        labels = c("Height", "BMI",  "Allergy", "AtopicDermatitis", "AOA", "COA", "IPF", "COPD"))
+
+# compute tau*
+
+sd_annot <-
+  data.frame(Category = levels(factor(ldsc_tbl$Category)),
+             annot_std_error = unlist(lapply(levels(factor(ldsc_tbl$Category)), function(i){estimate_sd_annot(i)})))
+
+ldsc_tbl <- left_join(ldsc_tbl, trait_snp_h2g, by = "trait")
+ldsc_tbl <- left_join(ldsc_tbl, sd_annot, by = "Category")
+ldsc_tbl$tau_star <-  ldsc_tbl$Coefficient/ldsc_tbl$perSNPh2g * ldsc_tbl$annot_std_error
+
+corr_ldsc_tbl <-
+  ldsc_tbl %>%
+    filter(!trait %in% c("COPD", "IPF")) %>%
+      mutate(Enrichment = tau_star,
+                      Enrichment_std_error = Coefficient_std_error/perSNPh2g*annot_std_error,
+                      Enrichment_p = pnorm(-abs(Coefficient_z.score))*2, 
+                      trait = factor(trait, levels = c("Height", "BMI",  "Allergy",  "AtopicDermatitis", "AOA", "COA")))
+plots <- list()
+for(ct in c("RegT", "CD4T", "CD8T", "Th17")){
+  plots[[ct]] <- snp_enrichment_plot(
+        corr_ldsc_tbl %>% filter(c == ct),
+        log.based = F, dot.size = 2, 
+        label.size = 4, textVjust = -0.8, tolabel = "pval") + 
+        xlab("tau* enrichment") +  geom_vline(xintercept = 1, linetype="dashed") + 
+        theme_ArchR() +
+        facet_grid(. ~ trait) + xlim(-3, 8)
+}  
+
+plots
+```
+
+## Overlapping cell-type specific peaks with COA GWAS SNPs
+
+**Differential CA peaks from MAST**
+
+We check differential CA peaks aggregated from different cell types at each fdr threshold and plot quantile-quantile plots for GWAS SNPs within those peaks. The LD blocks were labeled on SNPs at z-score greater than 2.
+```{r warning = F, eval = F}
+
+markerPeaks <- readRDS("output/diff_peak_analysis/by_celltype/subsets_lymph_tissue_merged_markerPeaks.RDS")
+cutoffs = c(0.01, 0.05, 0.1)
+
+# Subset cell-type specific peaks by different FDR cutoffs
+marker_outs <- list()
+for(i in 1:length(cutoffs)){
+  marker_list <-
+    getMarkers(markerPeaks, cutOff = paste0("Log2FC >= 1 & FDR <= ", cutoffs[i]))
+  marker_outs[[i]] <-
+  lapply(marker_list, function(i){
+      proj@peakSet[as.numeric(rownames(i))]
+    })
+}
+
+# get a set of lung-specific peaks with SNPs in high z scores 
+f <- readRDS("~/cluster/projects/u19_multiomics/data/coa_gp3_finemapping_gwas_L5.rds")
+f_gr <- GRanges(seqnames = paste0("chr", f$chr),
+                IRanges(start = f$pos,
+                        end = f$pos+1))
+mcols(f_gr) <- f[, -4:-1]
+#liftOver to hg38
+ch=import.chain("~/resources/genomes/chain_files/hg19ToHg38.over.chain")
+seqlevelsStyle(f_gr) <- "UCSC"
+f_hg38_gr<- unlist(liftOver(f_gr, ch))
+
+
+z_list <-
+  lapply(marker_outs[[1]], function(i){mergeByOverlaps(i, f_hg38_gr)})
+
+
+DT::datatable(
+  data.frame(
+    fdr = cutoffs[1],
+    nPeaks = sapply(marker_outs[[1]], length)),
+  caption = "Number of cell-type specific peaks above fdr threshold"
+)
+# Overlap lung-specific peaks with GWAS SNPs
+z_list <- 
+  lapply(markerPeaks, function(i){
+    mergeByOverlaps(i, f_hg38_gr)
+  })
+
+# create a random set of peaks as background
+z_list$random <-
+  mergeByOverlaps(
+    proj@peakSet[sample(1:length(proj@peakSet), 6500)], f_hg38_gr)
+# 
+# cutoffs <- c(cutoffs, 0)
+z_list <- z_list[!names(z_list) %in% c("CD8/CD4_T", "Other")]
+
+gginput_list <-
+  lapply(1:length(z_list), function(i) {
+    df = data.frame(
+      CellType = names(z_list)[i],
+      fdr = cutoffs[1],
+      score = z_list[[i]]$zscore,
+      locus = z_list[[i]]$locus,
+      CS = z_list[[i]]$CS
+    )
+  })
+gginput <- do.call(rbind, gginput_list)
+
+
+# Q-Q plot colored by peak sets
+qq_plot <-
+  ggplot(gginput,
+         aes(sample = score, 
+             color = factor(CellType))) + 
+    stat_qq(size = 0.6) + 
+    stat_qq_line(col = "blue")
+
+plot_data <- ggplot_build(qq_plot)$data[[1]]
+plot_data$label <- ifelse(plot_data$sample >= 2, gginput$locus, "")
+plot_data$group <- factor(gginput$CellType)
+
+qq_plot_labeled <- 
+  ggplot(plot_data, 
+         aes(x = theoretical, y = sample, 
+             color = factor(group),
+             label = label))+ 
+  geom_point(size = 0.6) + 
+  geom_label_repel(max.overlaps = 20) + 
+  theme_bw(base_size = 12) + 
+  theme(legend.position = "bottom") + 
+  ylab("Z-scores for GWAS SNPs within peaks") + 
+  xlab("Theoretical quantiles") + 
+  ggtitle("Cell-type specific peaks above fdr 0.01 contain more SNPs with high z scores")
+
+qq_plot_labeled
+```
+
+
+
+
+
+
+
+
+
+
+`
+
+
