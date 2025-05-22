@@ -132,6 +132,7 @@ ggplot(
   scale_fill_discrete() +
   theme_ArchR(legendTextSize = 15, baseSize = 15)
 ```
+
 ### Venn Diagram to compare against a union set of peaks
 
 Lung and Blood peaks were called by different procedures. Lung peaks have fixed size (500bp), while blood peaks have sizes ranging from 200 to 5K bp. To make comparison, I first made a union set of peaks and then comparing peaks from each tissue against the union set. 
@@ -175,6 +176,7 @@ plot_grid(
   plot(p1, quantitie = list(type = c("percent", "counts"))),
   plot(p2, quantitie = list(type = c("percent", "counts"))))
 ```
+
 ## heritability enrichment with S-LDSC 
 
 ```{r echo = F, eval = F}
@@ -555,14 +557,14 @@ snp_enrichment_plot(
 
 ```
 
-Joint test of lung and blood T subsets
+### Joint test of lung and blood T subsets
 
 * Lung regulatory T cells show significant enrichment across all asthma and related diseases
 * Lung CD4+ T, CD8+T and Th17 cells show enrichment for genetic risks of specific traits.  
 * Activating CD4+ T cells in blood consistently show enrichment for risks of atopic dermatitis.
 
 
-```{r fig.width = 14, fig.height = 4}
+```{r fig.width = 14, fig.height = 6}
 ldsc_tbl <- c()
 for (trait in trait_list) {
   for (c in c("RegT", "CD4T", "CD8T", "Th17")) {
@@ -607,12 +609,13 @@ for(ct in c("RegT", "CD4T", "CD8T", "Th17")){
         log.based = F, dot.size = 2, 
         label.size = 4, textVjust = -0.8, tolabel = "pval") + 
         xlab("tau* enrichment") +  geom_vline(xintercept = 1, linetype="dashed") + 
-        theme_ArchR() +
+        theme_ArchR() + theme(legend.position = "none") + 
         facet_grid(. ~ trait) + xlim(-3, 8)
 }  
 
 plots
 ```
+
 
 ## Overlapping cell-type specific peaks with COA GWAS SNPs
 
