@@ -28,5 +28,6 @@ Single-cell multiomics on paired lung and spleen samples from 9 donors (6 contro
 
 [transcriptomic features specific to lung](identify_lung_specific_transcriptomic_features.html)
 
+[heritability enrichment for lung open chromatin regions](heritability_enrichment_for_lung_open_chromatin.html)
 
-
+[linking asthma-related CREs to genes](link_peaks_to_genes.html)
