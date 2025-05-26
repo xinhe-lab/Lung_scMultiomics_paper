@@ -11,7 +11,7 @@
 
 <meta name="author" content="Jing Gu" />
 
-<meta name="date" content="2025-05-13" />
+<meta name="date" content="2025-05-25" />
 
 <title>Annotating cell types for sc-multiomics dataset</title>
 
@@ -362,7 +362,7 @@ div.tocify {
 <h1 class="title toc-ignore">Annotating cell types for sc-multiomics
 dataset</h1>
 <h4 class="author">Jing Gu</h4>
-<h4 class="date">2025-05-13</h4>
+<h4 class="date">2025-05-25</h4>
 
 </div>
 
@@ -370,7 +370,7 @@ dataset</h1>
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
 <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-ok text-success"
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
 aria-hidden="true"></span>
 </button>
 </p>
@@ -381,8 +381,8 @@ aria-hidden="true"></span>
 </li>
 <li>
 <a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
-</a>
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -391,13 +391,13 @@ class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
 <div class="tab-content">
 <div id="summary" class="tab-pane fade in active">
 <p>
-<strong>Last updated:</strong> 2025-05-13
+<strong>Last updated:</strong> 2025-05-25
 </p>
 <p>
 <strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 7
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
 <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 0
+aria-hidden="true"></span> 1
 </p>
 <p>
 <strong>Knit directory:</strong> <code>Lung_scMultiomics_paper/</code>
@@ -507,30 +507,56 @@ run.</p>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongrelative">
-<span class="glyphicon glyphicon-ok text-success"
-aria-hidden="true"></span> <strong>File paths:</strong> relative </a>
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongabsolute">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>File paths:</strong> absolute </a>
 </p>
 </div>
-<div id="strongFilepathsstrongrelative" class="panel-collapse collapse">
+<div id="strongFilepathsstrongabsolute" class="panel-collapse collapse">
 <div class="panel-body">
-<p>Great job! Using relative paths to the files within your workflowr
-project makes it easier to run your code on other machines.</p>
+<p>
+Using absolute paths to the files within your workflowr project makes it
+difficult for you and others to run your code on a different machine.
+Change the absolute path(s) below to the suggested relative path(s) to
+make your code more reproducible.
+</p>
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th style="text-align:left;">
+absolute
+</th>
+<th style="text-align:left;">
+relative
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+~/projects/Lung_scMultiomics_paper/data/u19_full_atac_cell_metadata.RDS
+</td>
+<td style="text-align:left;">
+data/u19_full_atac_cell_metadata.RDS
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
 <div class="panel panel-default">
 <div class="panel-heading">
 <p class="panel-title">
-<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomxinhelabLungscMultiomicspapertreec6723e8bb20630b594b18327ce71b3d5c14d58detargetblankc6723e8a">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongRepositoryversionstrongahrefhttpsgithubcomxinhelabLungscMultiomicspapertree0976797bd818e10035232c023603b1e37ef90830targetblank0976797a">
 <span class="glyphicon glyphicon-ok text-success"
 aria-hidden="true"></span> <strong>Repository version:</strong>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/tree/c6723e8bb20630b594b18327ce71b3d5c14d58de" target="_blank">c6723e8</a>
+<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/tree/0976797bd818e10035232c023603b1e37ef90830" target="_blank">0976797</a>
 </a>
 </p>
 </div>
 <div
-id="strongRepositoryversionstrongahrefhttpsgithubcomxinhelabLungscMultiomicspapertreec6723e8bb20630b594b18327ce71b3d5c14d58detargetblankc6723e8a"
+id="strongRepositoryversionstrongahrefhttpsgithubcomxinhelabLungscMultiomicspapertree0976797bd818e10035232c023603b1e37ef90830targetblank0976797a"
 class="panel-collapse collapse">
 <div class="panel-body">
 <p>
@@ -540,7 +566,7 @@ reproducibility.
 </p>
 <p>
 The results in this page were generated with repository version
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/tree/c6723e8bb20630b594b18327ce71b3d5c14d58de" target="_blank">c6723e8</a>.
+<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/tree/0976797bd818e10035232c023603b1e37ef90830" target="_blank">0976797</a>.
 See the <em>Past versions</em> tab to see a history of the changes made
 to the R Markdown and HTML files.
 </p>
@@ -559,10 +585,19 @@ Untracked files:
     Untracked:  Lung_scMultiomics_paper.Rproj
     Untracked:  _workflowr.yml
     Untracked:  analysis/ArchRLogs/
+    Untracked:  analysis/about.knit.md
+    Untracked:  analysis/archive.Rmd
+    Untracked:  analysis/figures_for_grant_application.Rmd
+    Untracked:  analysis/link_peaks_to_genes.Rmd
+    Untracked:  code/run_GO_enrichment.R
+    Untracked:  data/p2g_res/
+    Untracked:  data/u19_full_atac_cell_metadata.RDS
     Untracked:  output/u19_multiomics
 
 Unstaged changes:
     Modified:   README.md
+    Modified:   analysis/heritability_enrichment_for_lung_open_chromatin.Rmd
+    Modified:   analysis/identify_lung_specific_transcriptomic_features.Rmd
     Modified:   analysis/test.Rmd
 
 </code></pre>
@@ -609,6 +644,40 @@ Message
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>
+Rmd
+</td>
+<td>
+<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/0976797bd818e10035232c023603b1e37ef90830/analysis/identify_cell_types.Rmd" target="_blank">0976797</a>
+</td>
+<td>
+Jing Gu
+</td>
+<td>
+2025-05-25
+</td>
+<td>
+cell composition and label transferring
+</td>
+</tr>
+<tr>
+<td>
+html
+</td>
+<td>
+<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/bc2b3f3b5345c3d7a5044f9c8b6a4e7d7ab99506/docs/identify_cell_types.html" target="_blank">bc2b3f3</a>
+</td>
+<td>
+Jing Gu
+</td>
+<td>
+2025-05-13
+</td>
+<td>
+Build site.
+</td>
+</tr>
 <tr>
 <td>
 Rmd
@@ -782,6 +851,10 @@ to predict cell types based on the expression of marker genes.</p>
 <p>Dotplot for expression levels of CD69 and marker genes for immune
 subsets</p>
 <p><img src="assets/dotplot_GE_markers.png" /></p>
+<div id="cell-composition-across-samples" class="section level3">
+<h3>Cell composition across samples</h3>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-2-1.png" width="960" style="display: block; margin: auto;" /></p>
+</div>
 </div>
 <div id="annotate-clusters-of-atac-seq-data-with-majority-voting"
 class="section level2">
@@ -792,52 +865,7 @@ class="section level2">
 fragments, so top 5K cells ranked by number of fragments were retained.
 As a result, we see more consistent distribution from the rigid plots of
 TSS enrichment and log10 of number of fragments across samples.
-<img src="figure/identify_cell_types.Rmd/unnamed-chunk-1-1.png" width="672" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-1-1">
-Past versions of unnamed-chunk-1-1.png
-</button>
-</p>
-<div id="fig-unnamed-chunk-1-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/10dd433e0f23eec833d0436d4414da218dd88374/docs/figure/identify_cell_types.Rmd/unnamed-chunk-1-1.png" target="_blank">10dd433</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-13
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-<p>Ridge plots for TSS enrichment and log10(nFrags) across samples show
-a relatively consistent distribution.</p>
-<p>Fragment size distributions are variable across samples, but overall
-enriched for sizes of one or two nucleosomes</p>
-<p><img src="assets/atac_seq_fragment_size.png" /></p>
-<p>Clustering of ATAC-seq data shows no strong bias to one batch or one
-sample.</p>
-<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-3-1.png" width="768" style="display: block; margin: auto;" /></p>
+<img src="figure/identify_cell_types.Rmd/unnamed-chunk-3-1.png" width="672" style="display: block; margin: auto;" /></p>
 <p>
 <button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-3-1">
 Past versions of unnamed-chunk-3-1.png
@@ -875,55 +903,17 @@ Jing Gu
 </table>
 </div>
 </div>
+<p>Ridge plots for TSS enrichment and log10(nFrags) across samples show
+a relatively consistent distribution.</p>
+<p>Fragment size distributions are variable across samples, but overall
+enriched for sizes of one or two nucleosomes</p>
+<p><img src="assets/atac_seq_fragment_size.png" /></p>
+<p>Clustering of ATAC-seq data shows no strong bias to one batch or one
+sample.</p>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-5-1.png" width="768" style="display: block; margin: auto;" /></p>
 <p>Clustering of ATAC-seq data also shows no distinct clusters for
 either tissue or disease status.</p>
-<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-4-1.png" width="768" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-4-1">
-Past versions of unnamed-chunk-4-1.png
-</button>
-</p>
-<div id="fig-unnamed-chunk-4-1" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/10dd433e0f23eec833d0436d4414da218dd88374/docs/figure/identify_cell_types.Rmd/unnamed-chunk-4-1.png" target="_blank">10dd433</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-13
-</td>
-</tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-<div id="cell-composition-for-each-cluster-of-atac-seq-data"
-class="section level3">
-<h3>Cell composition for each cluster of ATAC-seq data</h3>
-<p>Majority of clusters were dominated by one single cell type from
-matched RNA-seq, while two clusters show some ambiguity and so labeled
-as “CD8/CD4_T” and “Th17/CD4_T”.</p>
-<pre><code>Loading required package: SingleCellExperiment</code></pre>
-<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-6-1.png" width="864" style="display: block; margin: auto;" /></p>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-6-1.png" width="768" style="display: block; margin: auto;" /></p>
 <p>
 <button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-6-1">
 Past versions of unnamed-chunk-6-1.png
@@ -961,52 +951,17 @@ Jing Gu
 </table>
 </div>
 </div>
-<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-6-2.png" width="864" style="display: block; margin: auto;" /></p>
-<p>
-<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-6-2">
-Past versions of unnamed-chunk-6-2.png
-</button>
-</p>
-<div id="fig-unnamed-chunk-6-2" class="collapse">
-<div class="table-responsive">
-<table class="table table-condensed table-hover">
-<thead>
-<tr>
-<th>
-Version
-</th>
-<th>
-Author
-</th>
-<th>
-Date
-</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/10dd433e0f23eec833d0436d4414da218dd88374/docs/figure/identify_cell_types.Rmd/unnamed-chunk-6-2.png" target="_blank">10dd433</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-13
-</td>
-</tr>
-</tbody>
-</table>
 </div>
-</div>
-<p>UMAP for ATAC-seq data from 100K cells</p>
-<ul>
-<li><p>left plot - cell labels before majority-voting</p></li>
-<li><p>right plot - cell labels after majority-voting
-<img src="figure/identify_cell_types.Rmd/unnamed-chunk-7-1.png" width="768" style="display: block; margin: auto;" /></p>
+<div id="cell-composition-for-each-cluster-of-atac-seq-data"
+class="section level3">
+<h3>Cell composition for each cluster of ATAC-seq data</h3>
+<p>Majority of clusters were dominated by one single cell type from
+matched RNA-seq, while two clusters show some ambiguity and so labeled
+as “CD8/CD4_T” and “Th17/CD4_T”.</p>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-7-1.png" width="864" style="display: block; margin: auto;" /></p>
 <p>
 <button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-7-1">
-<p>Past versions of unnamed-chunk-7-1.png</p>
+Past versions of unnamed-chunk-7-1.png
 </button>
 </p>
 <div id="fig-unnamed-chunk-7-1" class="collapse">
@@ -1040,19 +995,75 @@ Jing Gu
 </tbody>
 </table>
 </div>
+</div>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-7-2.png" width="864" style="display: block; margin: auto;" /></p>
+<p>UMAP for ATAC-seq data from 100K cells</p>
+<ul>
+<li><p>left plot - cell labels before majority-voting</p></li>
+<li><p>right plot - cell labels after majority-voting
+<img src="figure/identify_cell_types.Rmd/unnamed-chunk-8-1.png" width="768" style="display: block; margin: auto;" /></p>
+<p>
+<button type="button" class="btn btn-default btn-xs btn-workflowr btn-workflowr-fig" data-toggle="collapse" data-target="#fig-unnamed-chunk-8-1">
+<p>Past versions of unnamed-chunk-8-1.png</p>
+</button>
+</p>
+<div id="fig-unnamed-chunk-8-1" class="collapse">
+<div class="table-responsive">
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th>
+Version
+</th>
+<th>
+Author
+</th>
+<th>
+Date
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/bc2b3f3b5345c3d7a5044f9c8b6a4e7d7ab99506/docs/figure/identify_cell_types.Rmd/unnamed-chunk-8-1.png" target="_blank">bc2b3f3</a>
+</td>
+<td>
+Jing Gu
+</td>
+<td>
+2025-05-13
+</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div></li>
 </ul>
+</div>
+<div id="cell-composition-across-samples-1" class="section level3">
+<h3>Cell composition across samples</h3>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-10-1.png" width="960" style="display: block; margin: auto;" /></p>
 </div>
 <div id="validating-cell-type-annotations" class="section level3">
 <h3>Validating cell type annotations</h3>
 <p>Marker genes show high gene scores computed from nearby ATAC-seq
 peaks for the corresponding cluster</p>
-<pre><code>Warning: The `&lt;scale&gt;` argument of `guides()` cannot be `FALSE`. Use &quot;none&quot; instead as
-of ggplot2 3.3.4.
-This warning is displayed once every 8 hours.
-Call `lifecycle::last_lifecycle_warnings()` to see where this warning was
-generated.</code></pre>
-<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-8-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-11-1.png" width="672" style="display: block; margin: auto;" /></p>
+</div>
+</div>
+<div id="annotating-clusters-with-label-transferring"
+class="section level2">
+<h2>Annotating clusters with label transferring</h2>
+<p>Most of the clusters were annotated similarly using both majority
+voting or label transferring approaches. For the ambiguous clusters,
+results from label transferring show C16 was mostly Th17 and C14 was
+mixture of CD8/CD4_T cells. This is due to imperfect clustering or
+heterogeneity at chromatin levels for cells in those clusters.</p>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-12-1.png" width="960" style="display: block; margin: auto;" /></p>
+<div id="umap-for-both-approaches" class="section level3">
+<h3>UMAP for both approaches</h3>
+<p><img src="figure/identify_cell_types.Rmd/unnamed-chunk-13-1.png" width="672" style="display: block; margin: auto;" /></p>
 <p>Track plots for all peaks within +/-5Kb of TSS of each marker
 gene</p>
 <br>
@@ -1082,8 +1093,8 @@ attached base packages:
 
 other attached packages:
  [1] hexbin_1.28.5                          
- [2] SingleCellExperiment_1.20.1            
- [3] ggridges_0.5.6                         
+ [2] ggridges_0.5.6                         
+ [3] SingleCellExperiment_1.20.1            
  [4] cowplot_1.1.3                          
  [5] ggrepel_0.9.6                          
  [6] eulerr_7.0.2                           
