@@ -9,7 +9,7 @@ author: 'Jing Gu'
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 library(dplyr)
 library(ArchR)
 library(liftOver)
@@ -17,6 +17,7 @@ library(eulerr)
 library(ggrepel)
 library(cowplot)
 work.dir<-"~/cluster/projects/u19_multiomics"
+set.seed(10)
 options(repr.plot.width=16, repr.plot.height=10)
 proj <- loadArchRProject("output/u19_multiomics/analyses/u19_peaks_tissue/")
 ct_order <-
@@ -31,8 +32,6 @@ ct_order <-
   "Treg",
   "Other"
 )
-#20-colors
-stallion = c("1"="#D51F26","2"="#272E6A","3"="#208A42","4"="#89288F","5"="#F47D2B", "6"="#FEE500","7"="#8A9FD1","8"="#C06CAB","19"="#E6C2DC", "10"="#90D5E4", "11"="#89C75F","12"="#F37B7D","13"="#9983BD","14"="#D24B27","15"="#3BBCA8", "16"="#6E4B9E","17"="#0C727C", "18"="#7E1416","9"="#D8A767","20"="#3D3D3D")
 
 ```
 
@@ -48,6 +47,52 @@ UMAP for gene expression of all the cells, split by tissue of origin, with clust
 Dotplot for expression levels of CD69 and marker genes for immune subsets
 
 ![](assets/dotplot_GE_markers.png)
+
+### Cell composition across samples
+
+```{r}
+seRNA <- readRDS("~/cluster/projects/u19_multiomics/analyses/u19_seRNA_summarized_experiment.RDS") 
+colData(seRNA)$CellType <- 
+factor(seRNA$majority_voting,
+       labels = c("NK",
+                  "NK", "Other", 
+                  "Other", "Other",
+                  "Memory_B","Naive_B", "Other",
+                  "Treg", "CD4_T", 
+                  "CD8_T", "Th17")
+       )
+colData(seRNA)$CellType <- factor(
+    colData(seRNA)$CellType,
+    levels = 
+            c("Other", "Treg", "Th17", "CD4_T",
+              "CD8_T", "NK", "Memory_B", "Naive_B"))
+pal <- paletteDiscrete(values = colData(seRNA)$CellType)
+```
+
+```{r, fig.width = 10}
+sample_cov <- fread("~/cluster/projects/u19_multiomics/output/sample_covariates.txt")
+rnameta<-readRDS("~/cluster/projects/u19_multiomics/fastTopics/u19_cell_metadata.RDS")
+rnameta$major <- factor(rnameta$major, levels = rev(names(pal)))
+rnameta$core_ID <- factor(rnameta$full.ident, 
+                          labels = c(paste0("SMO", "-", c(2,3,5,7,8,9)),
+                                     paste0("SMO", "-", c(1, 4, 10))))
+rnameta <- left_join(rnameta, sample_cov[, c("ROBI", "core_ID", "cells")])
+rnameta$SampleID <- paste0(rnameta$cells, "_", 
+                           factor(rnameta$ROBI, 
+                                   labels = c(1, 4, 3, 5, 6, 2)))
+
+#rnameta<-readRDS("output/u19_multiomics/output/u19_matched_rna_atac_cell_metadata.RDS")
+#rnameta$Sample <- factor(rnameta$Sample, labels = c("Lung", "Spleen"))
+
+ggplot(rnameta,
+       aes(y = paste0(SampleID),
+           fill = major)) + 
+  geom_bar(position = "fill") + 
+  scale_fill_manual(values = pal) + 
+  xlab("Cell Proportion") + ylab("") + 
+  theme_ArchR(legendPosition = "right", legendTextSize = 15, baseSize = 15) +
+  ggtitle("Spleen and lung have large differences in cell composition")
+```
 
 ## Annotate clusters of ATAC-seq data with majority voting
 
@@ -112,32 +157,15 @@ ggAlignPlots(p2, p3, type = "h")
 
 Majority of clusters were dominated by one single cell type from matched RNA-seq, while two clusters show some ambiguity and so labeled as "CD8/CD4_T" and "Th17/CD4_T".
 
-```{r}
-seRNA <- readRDS("~/cluster/projects/u19_multiomics/analyses/u19_seRNA_summarized_experiment.RDS") 
-colData(seRNA)$CellType <- 
-factor(seRNA$majority_voting,
-       labels = c("NK",
-                  "NK", "Other", 
-                  "Other", "Other",
-                  "Memory_B","Naive_B", "Other",
-                  "Treg", "CD4_T", 
-                  "CD8_T", "Th17")
-       )
-colData(seRNA)$CellType <- factor(
-    colData(seRNA)$CellType,
-    levels = 
-            c("Other", "Treg", "Th17", "CD4_T",
-              "CD8_T", "NK", "Memory_B", "Naive_B"))
-pal <- paletteDiscrete(values = colData(seRNA)$CellType)
+```{r, message = F, fig.width = 9}
 proj@cellColData$PredCellType <-
   factor(proj@cellColData$PredCellType,
          levels = rev(ct_order))
-```
 
-```{r, message = F, fig.width = 9}
 plotEmbedding(ArchRProj = proj, colorBy = "cellColData", 
               name = "Clusters", embedding = "UMAP") + 
   theme(legend.position = "none")
+
 pal_atac <- paletteDiscrete(values = proj@cellColData$PredCellType)
 
 ggplot(proj@cellColData,
@@ -165,11 +193,45 @@ p2 <-plotEmbedding(ArchRProj = proj, colorBy = "cellColData",
 ggAlignPlots(p1, p2, type = "h")
 ```
 
+### Cell composition across samples
+
+```{r, eval = F}
+metadata <- proj@cellColData
+metadata$core_ID <- metadata$Sample
+metadata <- left_join(data.frame(metadata), sample_cov[, c("ROBI", "core_ID")])
+metadata$SampleID <- paste0(metadata$Tissue, "_", 
+                            factor(metadata$ROBI, 
+                                   labels = c(1, 4, 3, 5, 6, 7, 2, 8, 9)))
+metadata$PredCellType <- factor(metadata$PredCellType,
+                                levels = rev(names(pal_atac)))
+metadata$predictedGroup_Un <- factor(
+  metadata$predictedGroup_Un,
+  labels = c("NK", "NK", "Other", "Other",
+             "Other", "Memory_B", "Naive_B",
+             "Treg", "CD4_T", "CD8_T", "Th17") 
+)
+metadata$predictedGroup_Un <- factor(metadata$predictedGroup_Un,
+                                levels = rev(names(pal)))
+```
+
+```{r, fig.width = 10}
+metadata <- readRDS("~/projects/Lung_scMultiomics_paper/data/u19_full_atac_cell_metadata.RDS")
+ggplot(metadata,
+       aes(y = SampleID,
+           fill = PredCellType)) + 
+  geom_bar(position = "fill") + 
+  scale_fill_manual(values = pal_atac) + 
+  xlab("Cell Proportion") + ylab("") + 
+  theme_ArchR(legendPosition = "right") + 
+  facet_grid(~ Status) + 
+  ggtitle("Majority voting affects cell compositino of Lung 5/6 samples")
+```
+
 ### Validating cell type annotations
 
 Marker genes show high gene scores computed from nearby ATAC-seq peaks for the corresponding cluster
 
-```{r message = F}
+```{r message = F, warning = F}
 markerGenes  <- c(
     "IL4R", "MS4A1", #B-Cell Trajectory
     "GNLY", "CD8B", "LEF1","TCF7", "IL7R", "CTLA4", "FOXP3" #TCells
@@ -201,22 +263,87 @@ p2 <- lapply(p_markers, function(x){
 do.call(plot_grid, c(list(ncol = 3), p2))
 ```
 
+
+
+## Annotating clusters with label transferring
+
+Most of the clusters were annotated similarly using both majority voting or label transferring approaches. For the ambiguous clusters, results from label transferring show C16 was mostly Th17 and C14 was mixture of CD8/CD4_T cells. This is due to imperfect clustering or heterogeneity at chromatin levels for cells in those clusters.
+
+```{r, fig.width = 10}
+proj@cellColData$LabelTransfer <- 
+  factor(metadata$predictedGroup_Un,
+         levels = rev(names(pal)))
+p1 <- 
+  ggplot(proj@cellColData,
+         aes(x = Clusters,
+             fill = CellType)) + 
+    geom_bar() + 
+    scale_fill_manual(values = pal) + 
+    theme_classic(base_size = 12)  + 
+    ggtitle("Cells were partially annotated by matched RNA-seq")
+p2 <-   
+ggplot(proj@cellColData,
+       aes(x = Clusters,
+           fill = LabelTransfer)) + 
+  geom_bar() + 
+  scale_fill_manual(values = pal) + 
+  theme_classic(base_size = 12) + 
+  ggtitle("Cells were annotated by label transferring")
+
+ggAlignPlots(p1, p2, type = "v")
+```
+
+### UMAP for both approaches
+
+```{r, fig.wdith = 12}
+
+proj@cellColData$MajorityVote <-
+  factor(proj@cellColData$PredCellType,
+         levels = rev(ct_order))
+
+pal_atac <- paletteDiscrete(values = proj@cellColData$MajorityVote)
+
+p1 <- plotEmbedding(
+  ArchRProj = proj,
+  colorBy = "cellColData",
+  name = "LabelTransfer",
+  embedding = "UMAP",
+  pal = pal
+) + theme_ArchR(legendTextSize = 6)
+
+
+p2 <- plotEmbedding(
+  ArchRProj = proj,
+  colorBy = "cellColData",
+  name = "MajorityVote",
+  embedding = "UMAP",
+  pal = pal_atac
+) + theme_ArchR(legendTextSize = 6)
+
+ggAlignPlots(p1, p2, type = "h")
+```
+
 Track plots for all peaks within +/-5Kb of TSS of each marker gene 
 
-```{r message = F, results='asis', eval = F}
+```{r message = F, eval = F}
 
 p_tracks <- plotBrowserTrack(
     ArchRProj = proj, 
     groupBy = "PredCellType",
     useGroups = c("Naive_B", "Memory_B", 
-                  "NK", "CD8_T", "CD8/CD4_T", 
+                  "NK", "CD8_T", "CD8/CD4_T", "CD4_T" 
                   "Th17/CD4_T", "Treg"),
-    geneSymbol = markerGenes[1], 
+    geneSymbol = markerGenes, 
     pal = pal_atac[-1],
-    threads = 4
+    threads = 10
     #upstream = 5000,
     #downstream = 5000
 )
+
+plotPDF(plotList = p_tracks, 
+    name = "Plot-Tracks-Marker-Genes_paper.pdf", 
+    ArchRProj = proj, 
+    addDOC = FALSE, width = 5, height = 5)
 
 for(i in p){
   grid::grid.draw(i)
