@@ -9,13 +9,11 @@ knitr::opts_chunk$set(echo = FALSE, message = F)
 library(ArchR)
 library(dplyr)
 library(tidyr)
-library(ggplot2)
-library(rtracklayer)
-library(GenomicRanges)
 library(colorRamp2)
 library(scales)
 library(htmltools)
 library(ComplexHeatmap)
+library(cowplot)
 set.seed(1)
 ct_order <-
   c(
@@ -28,6 +26,8 @@ ct_order <-
   "Treg",
   "Other"
 )
+name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
+
 ```
 
 # Differential gene expression analyses across tissue
@@ -65,16 +65,22 @@ DGE_tbl <- do.call(rbind, btw_tissue)
 DGE_tbl$cluster <- unlist(lapply(rownames(DGE_tbl), function(i){strsplit(i, "[.]")[[1]][1]}))
 DGE_tbl$gene <- unlist(lapply(rownames(DGE_tbl), function(i){strsplit(i, "[.]")[[1]][2]}))
 
-gginput <- 
-  DGE_tbl %>% filter(cluster != "Other" & p_val_adj <= 0.05) %>%
-      mutate(group = case_when(avg_log2FC >= 1 ~ "Lung Up-regulated", 
-                               avg_log2FC <= -1 ~ "Spleen Up-regulated",
-                               abs(avg_log2FC) < 1 ~ "Not Significant")) %>%
-      group_by(cluster, group) %>% summarise(n = n())
+
+pct_min = 0.1
+gginput <-
+    DGE_tbl %>% filter(cluster != "Other" & p_val_adj <= 0.05) %>%
+        filter(pct.1 >= pct_min | pct.2 >= pct_min) %>%
+        mutate(group = case_when(avg_log2FC >= 1 ~ "Lung Up-regulated", 
+                                 avg_log2FC <= -1 ~ "Spleen Up-regulated",
+                                 abs(avg_log2FC) < 1 ~ "Not Significant")) %>%
+        group_by(cluster, group) %>% summarise(n = n())
+
+
 
 totalCounts <- gginput %>% group_by(cluster) %>% summarise(total = sum(n))
 gginput <-
   left_join(gginput, totalCounts) %>%
+  filter(cluster != "Other") %>%
   mutate(prop = n/total,
          cluster = factor(cluster, levels = ct_order[ct_order != "Other"]))
 
@@ -96,11 +102,12 @@ ggplot(
 
 A Venn diagram for DE genes shared across cell types other than memory B cells implies DE genes are cell-type specific.
 
-```{r, fig.width = 10}
+```{r, fig.width = 14}
 library(ggVennDiagram)
 gginput <- 
   DGE_tbl %>% 
-  filter(cluster %in% c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T"), p_val_adj <= 0.05) %>%
+  filter(cluster %in% c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T") & 
+           p_val_adj <= 0.05 & (pct.1 >= pct_min | pct.2 >= pct_min)) %>%
       mutate(group = case_when(avg_log2FC >= 1 ~ "lung-up", 
                                avg_log2FC <= -1 ~ "spleen-up",
                                abs(avg_log2FC) < 1 ~ "Not Significant"))
@@ -113,11 +120,11 @@ sp_lt <- lapply(unique(gginput$cluster), function(i) {
   gginput$gene[gginput$cluster == i & gginput$group == "spleen-up"]})
 names(sp_lt) <- unique(gginput$cluster)
 
-p1 <- ggVennDiagram(lu_lt[names(lu_lt)!= "Memory_B"]) + 
-        scale_x_continuous(expand = expansion(mult = .2)) +
+p1 <- ggVennDiagram(lu_lt, label_size = 4, set_size = 8) + #[names(lu_lt)!= "Memory_B"]) + 
+        scale_x_continuous(expand = expansion(mult = .2)) + 
         ggtitle("Lung up-regulated genes")
   
-p2 <- ggVennDiagram(sp_lt[names(sp_lt)!= "Memory_B"]) + 
+p2 <- ggVennDiagram(sp_lt, label_size = 4, set_size = 8) + #[names(sp_lt)!= "Memory_B"]) + 
   scale_x_continuous(expand = expansion(mult = .2)) + 
   ggtitle("Spleen up-regulated genes")
 
@@ -139,6 +146,8 @@ Check the lung up-regulated genes shared across all immune subsets
 ```{r}
 commonGenes <- Reduce(intersect, lu_lt)
 paste(commonGenes, collapse = " ")
+lu_lt$common <- commonGenes
+#saveRDS(sp_lt, "../output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_genesets_min_pct0.1.RDS")
 ```
 
 Spleen up-regulated genes
@@ -146,20 +155,143 @@ Spleen up-regulated genes
 ggVennDiagram(sp_lt, force_upset = TRUE) 
 ```
 
+### Check whether effect sizes for common genes are correlated
+
+```{r}
+sub_tbl <- DGE_tbl %>% filter(cluster %in% name_order & gene %in% commonGenes)
+mat <-
+  sub_tbl[, c("cluster", "avg_log2FC", "gene")] %>%
+    pivot_wider(names_from = cluster, values_from = avg_log2FC)
+mat <- mat[, -1]
+col_fun = colorRamp2(c(0, 0.4, 1), c("blue", "white", "red"))
+Heatmap(cor(mat[, name_order]), col = col_fun)
+```
+
+
+### Check whether effect sizes for unique genes are not correlated
+
+```{r}
+library(RVenn)
+venn <- Venn(lu_lt)
+uniqueGenes <- Reduce(union, overlap_pairs(venn))
+sub_tbl <- DGE_tbl %>% filter(cluster %in% name_order & gene %in% uniqueGenes)
+dupGenes <-
+  sub_tbl |> dplyr::summarise(n = dplyr::n(), .by = c(gene, cluster)) |>
+    dplyr::filter(n > 1L) %>% pull(gene)
+
+mat <-
+  sub_tbl[!sub_tbl$gene %in% dupGenes, c("cluster", "avg_log2FC", "gene")] %>%
+    pivot_wider(names_from = cluster, values_from = avg_log2FC) %>%
+    na.replace(0)
+mat <- mat[, -1]
+col_fun = colorRamp2(c(0, 0.4, 1), c("blue", "white", "red"))
+Heatmap(cor(mat[, name_order]), col = col_fun)
+```
+
+
 ### GO enrichment results
 
 **Lung Up-regulated genes**
 
 Overall, lung up-regulated genes are enriched for immune-related hallmark gene sets and GO terms for T cell activation, response to cytokines, and regulation of cell adhesion. Particularly, lung-specific genes in CD4+T and memory B cells are enriched for Th1/Th2 differentiation. 
 
-```{r, fig.width = 10}
+```{r}
+GO_enrichment_plot <- function(gginput, title) {
+  p <-
+    ggplot(gginput,
+           aes(
+             x = k,
+             y = description,
+             color = -log10(FDR),
+             size = enrichment
+           )) +
+    geom_point() +
+    scale_colour_viridis_b(alpha = 0.8,
+                           na.value = "#FDE725FF") + 
+    scale_size_continuous() + 
+    xlab("") + ylab("") +
+    theme_ArchR(legendPosition = "right", 
+                xText90 = TRUE,
+                baseSize = 12,
+                legendTextSize = 12) + ggtitle(title)
+  return(p)
+}
+  
+```
+
+#### Comparing GO enrichment set between different min.pct
+
+* Set1 - min.pct = 0.1
+
+* Set2 - min.pct = 0.01
+
+**community-contributed_Hallmark50**
+
+Setting lower min.pct mainly affects enrichment results from B cells
+
+```{r, fig.width = 12}
 name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
-go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/lung_upreg_GO_enrichment.RDS")
+load("data/comparing_min_pct_GO.RData")
+#compare_GO_terms
+set1 <-
+  go_tbl1 %>% filter(FDR <= 0.05 & k != "common" & database == "community-contributed_Hallmark50")
+set2 <-
+  go_tbl2 %>% filter(FDR <= 0.05 & k != "common" & database == "community-contributed_Hallmark50")
+
+venn_plots <-
+  lapply(1:5, function(i){
+    ggVennDiagram(list(set1 = set1$description[set1$k == name_order[i]],
+                       set2 = set2$description[set2$k == name_order[i]]),
+                  label_size = 5) +  
+      theme(legend.position = "none") +
+      ggtitle(name_order[i])
+  })
+
+plot_grid(venn_plots[[1]],
+          venn_plots[[2]],
+          venn_plots[[3]],
+          venn_plots[[4]],
+          venn_plots[[5]],
+          ncol = 5)
+```
+
+**KEGG Pathway**
+
+Setting lower min.pct mainly affects enrichment results from B cells and CD4+T Cells.
+
+```{r}
+
+set1 <-
+  go_tbl1 %>% filter(FDR <= 0.05 & k != "common" & database == "pathway_KEGG")
+set2 <-
+  go_tbl2 %>% filter(FDR <= 0.05 & k != "common" & database == "pathway_KEGG")
+
+venn_plots <-
+  lapply(1:5, function(i){
+    ggVennDiagram(list(set1 = set1$description[set1$k == name_order[i]],
+                       set2 = set2$description[set2$k == name_order[i]]),
+                  label_size = 5) +  
+      theme(legend.position = "none") +
+      ggtitle(name_order[i])
+  })
+
+plot_grid(venn_plots[[1]],
+          venn_plots[[2]],
+          venn_plots[[3]],
+          venn_plots[[4]],
+          venn_plots[[5]],
+          ncol = 5)
+```
+
+#### min.pct = 0.1 and log2FC >= 1 
+
+```{r, fig.width = 8, fig.height = 5}
+go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/lung_upreg_min_pct0.1_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
 go_tbl <- go_tbl[!go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
 top <- 
   go_tbl %>% 
-    filter(FDR < 0.01) %>%
+    filter(FDR <= 0.05) %>%
       group_by(k, database) %>% arrange(FDR) %>%
         slice_head(n = 5) 
 ggList <-
@@ -167,48 +299,79 @@ ggList <-
     i %>% group_by(k) %>% 
       filter(description %in% top$description) %>%
       mutate(enrichment = round(enrichmentRatio, 1)) %>%
-      dplyr::select(-c(database, FDR))
+      dplyr::select(-database)
   })
 
 lapply(1:length(ggList), function(i){
-  ggplot(ggList[[i]] %>% mutate(k = factor(k, levels = c("common", name_order))), 
-       aes(x = k, y = description, fill = enrichment)) + 
-    geom_tile() + scale_fill_gradient2(midpoint = 1, 
-                                       limits = c(0, 10),
-                                       oob = scales::squish) + 
-    xlab("") + ylab("") + 
-    theme_ArchR() + ggtitle(names(ggList)[i])
-})
+  GO_enrichment_plot(
+    ggList[[i]] %>% mutate(k = factor(k, levels = c("common", name_order))),
+    #   filter(!(grepl("cascade", description))) %>%
+    #   filter(!(grepl("junctions", description))) %>%
+    # filter(!(grepl("rejection", description))),
+     title = strsplit(names(ggList)[[i]], "_")[[1]][2])})
 
 ```
 
 ```{r}
 browsable(tagList(lapply(split(go_tbl, go_tbl$database), function(i) {
   DT::datatable(
-    i %>% filter(FDR < 0.01) %>%
+    i %>% filter(FDR <= 0.05) %>%
       arrange(desc(enrichmentRatio)) %>%
-      dplyr::select(-c(FDR, database)) %>%
-      mutate(enrichmentRatio = round(enrichmentRatio, 1)),
+      dplyr::select(-database) %>%
+      mutate(enrichmentRatio = round(enrichmentRatio, 1),
+             FDR = format(FDR, scientific = TRUE, digits = 2)),
     caption = unique(i$database),
     options = list(pageLength = 5)
   )
 })))
 ```
 
+#### min.pct = 0.01 and log2FC >= 1 
+
+```{r, fig.width = 8, fig.height = 6}
+name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
+go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/lung_upreg_GO_enrichment.RDS")
+go_tbl <- do.call(rbind, go_list)
+go_tbl <- go_tbl[!go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
+top <- 
+  go_tbl %>% 
+    filter(FDR <= 0.05) %>%
+      group_by(k, database) %>% arrange(FDR) %>%
+        slice_head(n = 8) 
+ggList <-
+  lapply(split(go_tbl, go_tbl$database), function(i){
+    i %>% group_by(k) %>% 
+      filter(description %in% top$description) %>%
+      mutate(enrichment = round(enrichmentRatio, 1)) %>%
+      dplyr::select(-database)
+  })
+
+lapply(1:length(ggList), function(i){
+  GO_enrichment_plot(
+    ggList[[i]] %>% mutate(k = factor(k, levels = c("common", name_order))) %>%
+    #   filter(!(grepl("cascade", description))) %>%
+       filter(!(grepl("junctions", description))),
+    # filter(!(grepl("rejection", description))),
+     title = strsplit(names(ggList)[[i]], "_")[[1]][2])})
+
+```
+
 **Spleen Up-regulated genes**
 
-Overall, spleen up-regulated genes are less enriched for GO terms at a higher threshold at FDR < 0.1.
+Overall, spleen up-regulated genes are less enriched for GO terms at a higher threshold at FDR < 0.05.
 
 The DE genes down-regulated in lung detected from memory B cells are significantly enriched for asthma risk genes from KEGG pathway. The overlapped genes are HLA genes and *CD40*. Their function in B cells might be enhancing subsequent interaction with T cells.
 
-```{r, fig.width = 8}
-go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_GO_enrichment.RDS")
+#### min.pct = 0.1 and log2FC >= 1
+
+```{r, fig.width = 10}
+go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_min_pct0.1_GO_enrichment.RDS")
 go_tbl <- do.call(rbind, go_list)
 go_tbl <- go_tbl[!go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
-go_tbl <- go_tbl[go_tbl$k != "common", ]
+
 top <- 
   go_tbl %>% 
-    filter(FDR < 0.1) %>%
+    filter(FDR <= 0.05) %>%
       group_by(k, database) %>% arrange(FDR) %>%
         slice_head(n = 10) 
 ggList <-
@@ -216,33 +379,64 @@ lapply(split(go_tbl, go_tbl$database), function(i){
   i %>% group_by(k) %>% 
     filter(description %in% top$description) %>%
     mutate(enrichment = round(enrichmentRatio, 1)) %>%
-    dplyr::select(-c(database, FDR))
+    dplyr::select(-database)
 })
 
 lapply(1:length(ggList), function(i){
-  ggplot(ggList[[i]] %>% mutate(k = factor(k, levels = name_order)), 
-       aes(x = k, y = description, fill = enrichment)) + 
-    geom_tile() + scale_fill_gradient2(midpoint = 1, 
-                                       #limits = c(0, 10),
-                                       oob = scales::squish) + 
-     xlab("") + ylab("") + 
-    theme_ArchR() + ggtitle(names(ggList)[i])
+  GO_enrichment_plot(
+    ggList[[i]] %>% mutate(k = factor(k, levels = name_order)), 
+        title = ggtitle(names(ggList)[i]))
 })
 ```
 
 ```{r}
 browsable(tagList(lapply(split(go_tbl, go_tbl$database), function(i) {
   DT::datatable(
-    i %>% filter(FDR < 0.1) %>%
+    i %>% filter(FDR <= 0.05) %>%
       arrange(desc(enrichmentRatio)) %>%
-      dplyr::select(-c(FDR, database)) %>%
-      mutate(enrichmentRatio = round(enrichmentRatio, 1)),
+      dplyr::select(-database) %>%
+      mutate(enrichmentRatio = round(enrichmentRatio, 1),
+             FDR = format(FDR, scientific = TRUE, digits = 2)),
     caption = unique(i$database),
     options = list(pageLength = 5)
   )
 })))
 ```
 
+
+
+#### min.pct = 0.01 and log2FC >= 1
+
+```{r, fig.width = 10}
+go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_GO_enrichment.RDS")
+go_tbl <- do.call(rbind, go_list[1:5])
+go_tbl <- go_tbl[!go_tbl$database %in% c("disease_OMIM", "geneontology_Cellular_Component_noRedundant"), ]
+
+top <- 
+  go_tbl %>% 
+    filter(FDR <= 0.05) %>%
+      group_by(k, database) %>% arrange(FDR) %>%
+        slice_head(n = 10) 
+ggList <-
+lapply(split(go_tbl, go_tbl$database), function(i){
+  i %>% group_by(k) %>% 
+    filter(description %in% top$description) %>%
+    mutate(enrichment = round(enrichmentRatio, 1)) %>%
+    dplyr::select(-database)
+})
+
+lapply(1:length(ggList), function(i){
+  GO_enrichment_plot(
+    ggList[[i]] %>% mutate(k = factor(k, levels = name_order)), 
+        title = ggtitle(names(ggList)[i]))
+})
+```
+
+
+
+### Dot plots for genes in selected GO terms
+
+![assets/dotplot_spleen_upreg_asthma_genes.png]
 
 ## Summarizing DE genes by effect sizes
 
@@ -266,6 +460,7 @@ gginput[is.na(gginput)] <- 0
 ```
 
 ```{r fig.height = 10}
+
 kmean_outs<- kmeans(gginput[, -1], centers = 16)
 print("Number of genes in each k-mean cluster:")
 table(kmean_outs$cluster)
@@ -383,7 +578,7 @@ browsable(tagList(lapply(split(go_tbl, go_tbl$database), function(i) {
   )
 })))
 ```
-```
+
 
 
 `
