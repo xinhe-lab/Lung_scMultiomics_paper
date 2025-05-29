@@ -214,17 +214,28 @@ metadata$predictedGroup_Un <- factor(metadata$predictedGroup_Un,
                                 levels = rev(names(pal)))
 ```
 
-```{r, fig.width = 10}
+```{r, fig.height = 8, fig.width = 8}
 metadata <- readRDS("~/projects/Lung_scMultiomics_paper/data/u19_full_atac_cell_metadata.RDS")
-ggplot(metadata,
-       aes(y = SampleID,
+ggplot(metadata %>% dplyr::filter(SampleID != "Spleen_8") %>%
+         mutate(SampleID = factor(SampleID,
+                                  levels = c(paste0("Lung_", c(1:4,6,8,5,7,9)),
+                                             paste0("Spleen_", c(1:3,6,7,9))),
+                                  labels = c(paste0("L", c(1:4,6,8), "(C)"),
+                                             paste0("L",c(5,7,9), "(A)"),
+                                              paste0("S", c(1:3,6), "(C)"),
+                                             paste0("S", c(7,9), "(A)")))),
+       aes(x = SampleID,
            fill = PredCellType)) + 
   geom_bar(position = "fill") + 
   scale_fill_manual(values = pal_atac) + 
-  xlab("Cell Proportion") + ylab("") + 
-  theme_ArchR(legendPosition = "right") + 
-  facet_grid(~ Status) + 
-  ggtitle("Majority voting affects cell compositino of Lung 5/6 samples")
+  ylab("Cell Proportion") + xlab("") + 
+  guides(fill = guide_legend(title = "CellType")) + 
+  theme_ArchR(legendPosition = "bottom", 
+              baseSize = 12,
+              xText90 = TRUE,
+              legendTextSize = 10) + 
+  #facet_grid(~ Status) + 
+  ggtitle("Majority voting mainly affects cell compositino of Lung 5")
 ```
 
 ### Validating cell type annotations
@@ -323,31 +334,115 @@ p2 <- plotEmbedding(
 ggAlignPlots(p1, p2, type = "h")
 ```
 
-Track plots for all peaks within +/-5Kb of TSS of each marker gene 
+### Track plots for all peaks near TSS of each marker gene 
+
+![](assets/genomic_tracks_marker_genes.png)
 
 ```{r message = F, eval = F}
+library(locuszoomr)
+library(glue)
+gene <- c("IL4R", "MS4A1", "GNLY", "CD8B", "LEF1", "CTLA4")
+window_size <- 0.1e5
+library(EnsDb.Hsapiens.v86)
+edb <- EnsDb.Hsapiens.v86
 
-p_tracks <- plotBrowserTrack(
-    ArchRProj = proj, 
-    groupBy = "PredCellType",
-    useGroups = c("Naive_B", "Memory_B", 
-                  "NK", "CD8_T", "CD8/CD4_T", "CD4_T" 
-                  "Th17/CD4_T", "Treg"),
-    geneSymbol = markerGenes, 
-    pal = pal_atac[-1],
-    threads = 10
-    #upstream = 5000,
-    #downstream = 5000
-)
+loc_list <-
+  lapply(gene, function(i){
+    locus(gene = i,
+	        flank = window_size,
+	        ens_db = edb, )
+  })
+names(loc_list) <- gene
 
-plotPDF(plotList = p_tracks, 
-    name = "Plot-Tracks-Marker-Genes_paper.pdf", 
-    ArchRProj = proj, 
-    addDOC = FALSE, width = 5, height = 5)
+gene_tracks <-
+  lapply(loc_list, function(i){
+    gg_genetracks(i, cex.text = 1) + 
+#     scale_x_continuous(limits = i$xrange/1e6,
+# 		       labels = function(x) round(x, 2),
+# 		       expand = c(0, 0)) +
+    theme_minimal() + xlab("") + 
+    theme(
+      axis.text.x = element_blank(),
+      plot.background = element_rect(color = "white", fill = "white"))
+  }) 
 
-for(i in p){
-  grid::grid.draw(i)
+names(gene_tracks) <- gene
+# Atac-seq peaks
+bigwigs <- "../output/u19_multiomics/analyses/u19_peaks_tissue/GroupBigWigs/CellGroup/" |>
+    list.files(full.name = TRUE, pattern = "*.bw")
+
+names(bigwigs) <- 
+    unlist(lapply(basename(bigwigs), function(i){strsplit(i, "-")[[1]][1]}))
+
+loc_DF <- data.frame(
+  t(sapply(loc_list, function(i){c(i$seqname, i$xrange[1], i$xrange[2])}))) 
+
+plot_list <- list()
+for(loc in loc_list){
+  interv <- GRanges(glue("chr{loc$seqname}"), IRanges(loc$xrange[1], loc$xrange[2]))
+
+  atac_ranges <- map(bigwigs[1:9], ~import(., which = interv)) 
+  
+  atac_covered <-
+      atac_ranges |>
+      map_dfr(~as.data.frame(.) |> as_tibble(), .id = "CellType") |>
+      dplyr::select(CellType, start, end, score) %>%
+      mutate(CellType = gsub("Lung_", "", CellType))
+  
+  atac_gaps <- 
+      atac_ranges |>
+      map_dfr(~ranges(.) |> gaps() |> as.data.frame() |> as_tibble(), .id = "CellType") |>
+      mutate(score = 0) |>
+      dplyr::select(CellType, start, end, score)
+  
+  atac_peaks <- 
+      bind_rows(atac_covered, atac_gaps) |>
+      arrange(CellType, start) |>
+      pivot_longer(start:end, names_to = "dummy", values_to = "pos") |>
+      dplyr::filter(CellType != "Other") |>
+      mutate(CellType = factor(CellType,
+                               levels = gsub("/", ".", ct_order),
+                               labels = ct_order))
+  
+  
+  atac_plot <- 
+      ggplot(atac_peaks) +
+      geom_ribbon(aes(x = pos, ymin = 0, ymax = score, color = CellType, fill = CellType),
+  		linewidth = .5, outline.type = "full", alpha = .5) +
+      scale_x_continuous(
+             limits = loc$xrange, 
+  		       labels = function(x) round(x/1e6L, 2),
+  		       expand = c(0, 0)) +
+      scale_color_manual(values = pal_atac) +
+      scale_fill_manual(values = pal_atac) +
+      facet_wrap(~ CellType, ncol = 1, strip.position = "left") +
+      theme_minimal() +
+      theme(
+  	  legend.position = "none",
+  	  axis.text.y = element_blank(),
+  	  axis.ticks.y = element_blank(),
+  	  #strip.text.y.left = element_text(angle = 0, size = 12),
+  	  strip.text.y.left = element_blank(),
+  	  panel.grid.major.x = element_blank(),
+  	  panel.grid.minor.x = element_blank(),
+  	  panel.grid.major.y = element_blank(),
+  	  panel.grid.minor.y = element_blank(),
+  	  plot.background = element_rect(color = "white", fill = "white")) +
+      labs(x = NULL)
+
+    plot_list[[loc$gene]] <- 
+        plot_grid(gene_tracks[[loc$gene]], atac_plot, rel_heights  = c(0.2, 1),
+                  ncol = 1)
 }
 ```
 
+```{r, eval = F}
+ggarrange(plot_list$IL4R,
+          plot_list$MS4A1,
+          plot_list$GNLY,
+          plot_list$CD8B,
+          plot_list$LEF1,
+          plot_list$CTLA4,
+          ncol = 6)
+```
 
