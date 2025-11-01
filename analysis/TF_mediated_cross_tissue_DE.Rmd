@@ -154,7 +154,6 @@ cutoffs <- c(0.01, 0.015, 0.02, 0.025, 0.03, 0.035)
 target_list <-list()
 all_list <- list()
 for(c in cutoffs){
-  print(c)
   lung_grn <-
     lapply(ct_order, function(i) {
       f <- fread(sprintf("analysis/dictys/sparsity%s/L_%s_GRN.txt", c, i))
@@ -173,7 +172,7 @@ for(c in cutoffs){
 ```
 
 
-```{r, fig.width = 5, fig.height = 5}
+```{r, fig.width = 5, fig.height = 5, warning = FALSE}
 library(ggrepel)
 
 plots <-lapply(c("Naive_B", "Memory_B"), function(i){
