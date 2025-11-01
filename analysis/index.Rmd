@@ -32,4 +32,4 @@ Single-cell multiomics on paired lung and spleen samples from 9 donors (6 contro
 
 [linking asthma-related CREs to genes](link_peaks_to_genes.html)
 
-[Testing TFs mediated cross-tissue GE differences](TF_mediated_cross_tissue_DE.html)
+[Testing whether TFs drive cross-tissue GE differences](TFs_drive_cross_tissue_DE.html)
