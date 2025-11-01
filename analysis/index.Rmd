@@ -31,3 +31,5 @@ Single-cell multiomics on paired lung and spleen samples from 9 donors (6 contro
 [heritability enrichment for lung open chromatin regions](heritability_enrichment_for_lung_open_chromatin.html)
 
 [linking asthma-related CREs to genes](link_peaks_to_genes.html)
+
+[Testing TFs mediated cross-tissue GE differences](TF_mediated_cross_tissue_DE.html)
