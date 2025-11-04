@@ -1,0 +1,330 @@
+---
+title: "testing TF driving cross-tissue DE"
+output: html_document
+date: '2025-10-31'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(data.table)
+ct_order <-
+  c(
+  "Naive_B",
+  "Memory_B",
+  "NK",
+  "CD8_T",
+  "CD4_T",
+  "Th17",
+  "Treg"
+)
+source("code/make_plots.R")
+source("code/utility_function.R")
+```
+
+## Cross-tissue DE tested in pseudobulk by DESeq2 (batch corrected)
+
+Previous results were due to a mistake in filtering DE results by requiring expressed in at least three cells. For pseudobulk samples, we only have three samples for spleens. So genes not expressed in spleens were filtered out. 
+
+After batch correction, the numbers of DE genes are similar between two approaches.
+
+```{r eval = F}
+# prepare inputs for GO enrichment
+genesets <-
+  lapply(bulk_DEG[4:8], function(i) {
+   return(
+       i %>% filter(padj <= 0.05 & log2FoldChange >= 1) %>%
+         pull(gene))
+})
+
+bkgGenes <- lapply(1:5, function(i) {bulk_DEG$Treg$gene})
+names(bkgGenes) <- names(bulk_DEG[4:8])
+```
+
+Pseudo-bulk appraoch
+```{r cars}
+
+bulk_DEG <- readRDS("output/u19_multiomics/output/u19_rna/bulk_cross_tissue_DESeq2_batch_corrected.RDS")
+
+DEG_tbl <-
+  sapply(bulk_DEG[-3:-1], function(i) {
+    lung_up = sum(i$padj <= 0.05 & i$log2FoldChange >= 1, na.rm = T)
+    spleen_up = sum(i$padj <= 0.05 & i$log2FoldChange <= -1, na.rm = T)
+    return(c(lung_up, spleen_up))})
+
+rownames(DEG_tbl) <- c("lung_up", "spleen_up")
+DEG_tbl
+```
+
+Single-cell approach
+
+```{r}
+btw_tissue <- readRDS("output/u19_multiomics/output/DE_analysis_wilcox/cross_tissue_DE_wilcox.RDS")
+
+DGE_tbl <- do.call(rbind, btw_tissue)
+DGE_tbl$cluster <- unlist(lapply(rownames(DGE_tbl), function(i){strsplit(i, "[.]")[[1]][1]}))
+DGE_tbl$gene <- unlist(lapply(rownames(DGE_tbl), function(i){strsplit(i, "[.]")[[1]][2]}))
+
+sc_tbl <-
+  sapply(split(DGE_tbl, DGE_tbl$cluster), function(i) {
+    lung_up = sum(i$p_val_adj <= 0.05 & i$avg_log2FC >= 1, na.rm = T)
+    spleen_up = sum(i$p_val_adj <= 0.05 & i$avg_log2FC <= -1, na.rm = T)
+    return(c(lung_up, spleen_up))})
+
+rownames(sc_tbl) <- c("lung_up", "spleen_up")
+sc_tbl[, c("CD4_T", "CD8_T", "NK", "Memory_B", "Naive_B")]
+```
+
+
+Top 10 lung-upregulated genes in each cell type
+
+```{r}
+# GO enrichment for tissue-specific genes
+lung_up <- sapply(bulk_DEG[4:7], function(i) {
+   return(
+       i %>% filter(padj <= 0.05 & log2FoldChange >= 1) %>%
+        slice_max(order_by = log2FoldChange, n = 10) %>%
+         pull(gene))
+})
+
+spleen_up <- sapply(bulk_DEG[4:7], function(i) {
+   return(
+       i %>% filter(padj <= 0.05 & log2FoldChange <= -1) %>%
+        slice_max(order_by = abs(log2FoldChange), n = 10) %>%
+         pull(gene))
+})
+```
+
+```{r}
+DT::datatable(lung_up, caption = "Lung up-regulated DE genes")
+```
+
+```{r}
+DT::datatable(spleen_up,
+              caption = "Spleen up-regulated DE genes")
+
+```
+
+## Lung-upregulated genes were enriched for GO terms with immune-related functions
+
+Lung-upregulated genes in memory B cells were enriched in type 2 response and other T cell related pathways. These results were similar as previous ones with single-cell approach; however the signals were stronger with bulk approach.
+
+```{r}
+library(scales)
+go_tbl <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/lung_upreg_GO_enrichment.RDS")
+feature = "Biological"
+toshow <- 
+    do.call(rbind, go_tbl) %>% 
+      filter(FDR <= 0.05 & grepl(feature, database)) %>%
+        group_by(k) %>%
+          slice_max(n = 10, order_by = enrichmentRatio) %>%
+          pull(description)
+p <-
+  ggplot(
+    do.call(rbind, go_tbl) %>% 
+      filter(FDR <= 0.05 & grepl(feature, database)) %>%
+      filter(grepl(feature, database) & description %in% toshow),
+    aes(y = description,
+        x = factor(gsub("-", "_", k), levels = ct_order[2:5]),
+        size = enrichmentRatio,
+        color = -log10(FDR))) +
+    scale_color_gradient(
+       limits = c(0, 7), #capped at 7
+       oob = squish) +
+    geom_point() + xlab("") + ylab("") + 
+    theme(axis.text.x = element_text(angle = 90))
+p
+```
+
+## Spleen-upregulated genes were strictly enriched in B cell functions
+
+Somehow spleen-upregulated genes in T cells are enriched for B cell activation. 
+
+```{r}
+go_tbl <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/spleen_upreg_bulk_GO_enrichment.RDS")
+feature = "Biological"
+toshow <- 
+    do.call(rbind, go_tbl) %>% 
+      filter(FDR <= 0.05 & grepl(feature, database)) %>%
+        group_by(k) %>%
+          slice_max(n = 15, order_by = enrichmentRatio) %>%
+          pull(description)
+p <-
+  ggplot(
+    do.call(rbind, go_tbl) %>% 
+      filter(FDR <= 0.05 & grepl(feature, database)) %>%
+        filter(grepl(feature, database) & description %in% toshow),
+    aes(y = description,
+        x = factor(gsub("-", "_", k), levels = ct_order),
+        size = enrichmentRatio,
+        color = -log10(FDR))) + 
+    scale_color_gradient(
+       limits = c(0, 7), #capped at 7
+       oob = squish) +
+    geom_point() + xlab("") + ylab("") + 
+    theme(axis.text.x = element_text(angle = 90))
+
+p
+```
+
+In summary, genes with higher expression in lungs are broadly enriched for T cell related functions, while those in spleens are broadly enriched for B cell related functions. We still see lung up-regulated genes enriched in pathways of heat-shock protein genes. Overall, the GO enrichment results are consistent between bulk or single-cell approach.
+
+## Testing whether TFs drive cross-tissue GE differences
+
+We have shown that chromatin accessibility for cross-tissue DE genes are very similar. Thus, some other mechanisms may drive the differences, which motivates us to test whether TF activity is responsible for the up-regulation of genes in lung. 
+
+Cell composition for both tissues
+![cell comosition](assets/rna_cell_composition.png)
+
+We examined GRNs for B cells because both tissues have relatively similar number of cells. Though half amount of memory B cells found in lung compared to spleen, we still detected several lung TFs with higher activity relative to spleen. The differences in naive B cells are small, which is consistent with lack of differences in cross-tissue DE genes in naive B cells.  
+
+```{r}
+ct_order <-
+  c(
+  "Naive_B",
+  "Memory_B",
+  "CD8_T",
+  "CD4_T",
+  "Th17",
+  "Treg"
+)
+cutoffs <- c(0.01, 0.015, 0.02, 0.025, 0.03, 0.035)
+target_list <-list()
+all_list <- list()
+for(c in cutoffs){
+  lung_grn <-
+    lapply(ct_order, function(i) {
+      f <- fread(sprintf("analysis/dictys/sparsity%s/L_%s_GRN.txt", c, i))
+      return(lapply(split(f, f$Regulator), function(i){i$Target}))
+    })
+  names(lung_grn) <- ct_order
+  target_list[[as.character(c)]] <- lung_grn
+  all_genes <-
+     lapply(ct_order, function(i) {
+      f <- fread(sprintf("analysis/dictys/sparsity%s/L_%s_GRN.txt", c, i))
+      return(unique(f$Target))
+    })
+  names(all_genes) <- ct_order
+  all_list[[as.character(c)]] <- all_genes
+}
+```
+
+
+```{r, fig.width = 5, fig.height = 5, warning = FALSE}
+library(ggrepel)
+
+plots <-lapply(c("Naive_B", "Memory_B"), function(i){
+  f <- fread(sprintf("analysis/dictys/sparsity0.02/%s_cross_tissue_DE_DR_logFC.txt", i))
+  colnames(f)[1] <- "gene"
+    ggplot(
+      f, 
+      aes(x = DE_logFC,
+          y = DR_logFC,
+          label = ifelse(DE_logFC >= 1 & DR_logFC >= 1 |
+                           (DE_logFC <= -1 & DR_logFC <= -1), gene, ""))) + 
+      geom_point(size = 0.5) + 
+      geom_text_repel(size = 4) + 
+      geom_vline(xintercept = 0) + 
+      geom_hline(yintercept = 0) + 
+      theme_pub() +  
+      ggtitle(sprintf("Lung vs. Spleen: %s", i))
+})
+
+plots
+```
+Let's use TFs with >= 100 targets genes in lung memory B cells and ask whether they explain up-regulated genes in lungs
+
+```{r}
+sc_lungUp <-
+    DGE_tbl %>% filter(cluster == "Memory_B" & 
+                         p_val_adj <= 0.05 &
+                         avg_log2FC >= 1) 
+bulk_lungUp <- bulk_DEG$`Memory-B` %>% 
+  filter(padj <= 0.05 & log2FoldChange >= 1)
+
+f <- fread(sprintf("analysis/dictys/sparsity0.02/%s_cross_tissue_DE_DR_logFC.txt", "Memory_B"))
+regTFs <- f %>% filter(DE_logFC >= 0.58)
+colnames(regTFs)[1] <- "gene"
+reg_idx <- unlist(lapply(target_list$`0.02`$Memory_B, function(i) {length(unique(i))}))
+regTFs <- names(reg_idx[reg_idx >= 100])
+```
+
+
+### Testing whether lung-specific TFs regulated more DE genes
+
+Here I performed the tests on DE genes identified using single-cell or bulk approach. 
+
+```{r}
+
+# Target genes of more enriched for lung-up genes?
+
+sc_out <-
+  lapply(regTFs, function(i) {
+    target <- unique(target_list$`0.02`$Memory_B[[i]])
+    out_tbl = EnrichmentTest(target, sc_lungUp$gene, all_list$`0.02`$Memory_B)
+    return(out_tbl[[2]])
+  })
+sc_out <- data.frame(do.call(rbind, sc_out)) %>%
+  mutate(FDR = p.adjust(p_value, method = "fdr"))
+rownames(sc_out) <- regTFs
+
+bulk_out <-
+  lapply(regTFs, function(i) {
+    target <- unique(target_list$`0.02`$Memory_B[[i]])
+    out_tbl = EnrichmentTest(target, bulk_lungUp$gene, all_list$`0.02`$Memory_B)
+    return(out_tbl[[2]])
+  })
+
+bulk_out <- data.frame(do.call(rbind, bulk_out)) %>%
+  mutate(FDR = p.adjust(p_value, method = "fdr"))
+rownames(bulk_out) <- regTFs
+
+print("Results for single-cell approach DE genes:")
+sc_out %>% 
+  filter(FDR <= 0.1 & odds_ratio > 1)
+
+print("Results for bulk approach DE genes:")
+bulk_out %>%
+  filter(FDR <= 0.1 & odds_ratio > 1)
+```
+
+### Examining the effect sizes between TF regulation and differential expression
+
+As we identified lung-specific TFs enriched for DE genes, we further asked if TFs that have stronger links tend to have DE genes with larger differences between lung and spleen. Let's use gene expression in spleen as baseline. If specific lung TFs drive gene expression in lung to be higher than baseline, we would expect to higher TF activity leads to higher expression. 
+
+**Method**
+For each lung-specific TF, we identified lung up-regulated genes in its network. Then we plotted TF strength and differential expression and showed the fitted line.
+
+
+Bulk DE genes
+
+```{r}
+f <- fread("analysis/dictys/sparsity0.02/L_Memory_B_GRN.txt")
+lapply(rownames(bulk_out[bulk_out$FDR <= 0.1 & bulk_out$odds_ratio > 1, ]), function(i) {
+  common <- intersect(f$Target[f$Regulator == i], bulk_lungUp$gene)
+  df <-
+    data.frame(DR = f$Strength[f$Regulator == i & f$Target %in% common],
+               DE = bulk_lungUp$log2FoldChange[bulk_lungUp$gene %in% common],
+               gene = common)
+
+  model = lm(df$DE ~ df$DR)
+  #out_tbl = rbind(out_tbl, c(i, round(coef(summary(model))[2, ], 2)))
+  coeff = as.numeric(coefficients(model))
+  ggplot(df,
+         aes(x = DR,
+             y = DE,
+             label = gene)) + 
+    geom_point() + 
+    geom_abline(slope = coeff[2], 
+                intercept = coeff[1]) + 
+    geom_text_repel() + 
+    theme_pub() + 
+    ggtitle(i)
+})
+
+
+```
+
+No clear positive trends for the two TFs enriched for bulk-level DE genes.
