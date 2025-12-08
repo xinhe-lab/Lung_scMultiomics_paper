@@ -1,0 +1,263 @@
+---
+title: "Identify lung-specific transcriptomic features"
+output: html_document
+date: '`r Sys.Date()`'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = F)
+library(ArchR)
+library(dplyr)
+library(tidyr)
+library(colorRamp2)
+library(scales)
+library(htmltools)
+library(ComplexHeatmap)
+library(cowplot)
+set.seed(1)
+ct_order <-
+  c(
+  "Naive_B",
+  "Memory_B",
+  "NK",
+  "CD8_T",
+  "CD4_T",
+  "Th17",
+  "Treg",
+  "Other"
+)
+name_order <- c("Memory_B", "Naive_B", "NK", "CD4_T", "CD8_T")
+pal_atac <- readRDS("~/projects/Lung_scMultiomics_paper/data/color_codes.RDS")
+pal_rna <- pal_atac[2:8]
+source("code/make_plots.R")
+
+```
+
+# Differential gene expression analyses with DESeq2
+
+log(Counts) ~ factor(submission_date) + Race + Age + Sex + Tissue
+
+## Summarizing DE genes by selecting p-value cutoffs
+
+A table of cell counts by tissue and cell-type. 
+```{r}
+seRNA <- readRDS("~/cluster/projects/u19_multiomics/analyses/u19_seRNA_summarized_experiment.RDS") 
+colData(seRNA)$CellType <- 
+factor(seRNA$majority_voting,
+       labels = c("NK",
+                  "NK", "Other", 
+                  "Other", "Other",
+                  "Memory_B","Naive_B", "Other",
+                  "Treg", "CD4_T", 
+                  "CD8_T", "Th17")
+       )
+colData(seRNA)$CellType <- factor(
+    colData(seRNA)$CellType,
+    levels = 
+            c("Other", "Treg", "Th17", "CD4_T",
+              "CD8_T", "NK", "Memory_B", "Naive_B"))
+table(seRNA$CellType, seRNA$tissue.ident)
+```
+
+A barplot for number of DE genes detected for each cell type except for Th17 and Treg, due to low number of cells in spleen.
+
+```{r, fig.width = 10}
+tests <- readRDS("output/u19_multiomics/output/u19_rna/bulk_cross_tissue_DESeq2_full.RDS")
+tests <- lapply(names(tests), function(i) {
+  data.frame(tests[[i]], cluster = gsub("-", "_", i)) %>%
+    filter(!is.na(log2FoldChange))
+})
+
+DGE_tbl <- do.call(rbind, tests)
+
+gginput <-
+    DGE_tbl %>% 
+      mutate(avg_log2FC = log2FoldChange) %>%
+      filter(cluster != "Other" & padj <= 0.05) %>%
+      mutate(group = case_when(avg_log2FC >= 1~ "Lung Up-regulated", 
+                                 avg_log2FC <= -1 ~ "Spleen Up-regulated")) 
+
+totalCounts <- gginput %>% group_by(cluster, group) %>% dplyr::summarise(n = n())
+
+ggplot(
+  totalCounts %>% 
+    filter(!cluster %in% c("Th17", "Treg") &
+             grepl("Up-regulated", group)),
+  aes(x = factor(cluster, levels = ct_order[1:5]),
+      y = n,
+      fill = group)) + 
+  theme_bw(base_size  = 15) + 
+  geom_col(width = 0.4) +
+  theme_ArchR(baseSize = 15, legendTextSize = 15) + 
+  #geom_label(size = 2, position = position_dodge2()) + 
+  xlab("") + ylab("#DE genes with at least two fold change") + 
+  ggtitle("Majority of DE genes were detected from memory B cells for both tissues")
+```
+
+### A combined volcano plot for DE genes across cell types
+```{r, warning = F}
+library(ggrepel)
+selected <- ct_order[1:5]
+ggplot(
+  gginput %>% 
+    filter(cluster %in% selected),
+  aes(
+    x = avg_log2FC ,
+    y = -log10(pvalue),
+    color = cluster,
+  )
+) +
+  geom_point(size = 0.5) +
+  scale_color_manual(values = c(pal_rna)) + 
+  geom_point(
+    data =
+      gginput %>%
+      filter(group == "Not Significant") %>%
+      filter(cluster %in% selected),
+    aes(x = avg_log2FC, y = -log10(pvalue)),
+    color = alpha("grey", 0.7),
+    size = 0.5
+  ) +
+  geom_text_repel(
+    data = gginput %>% filter(cluster %in% selected),
+    aes(label = ifelse(abs(avg_log2FC) >= 0.58, gene, "")),
+    color = "grey30",
+    max.overlaps = 20,
+    nudge_x = 0.1, nudge_y = 0.1,
+    size =2.5) +
+  facet_wrap(~ factor(cluster, levels = ct_order[1:5]), nrow = 2) +
+  theme_pub() + xlim(c(-5, 10)) + 
+  theme(legend.position = "none")
+
+```
+
+### DE statistics for the *GNLY* example
+
+```{r}
+gginput %>% filter(gene == "GNLY")
+```
+
+
+```{r, eval = F}
+# comparing RNA counts between tissue for GNLY
+rna_counts <- readRDS("~/cluster/projects/u19_multiomics/output/u19_rna/pseudobulk_RNA_counts.RDS")
+samples = unlist(lapply(colnames(rna_counts), function(i) {
+  paste(strsplit(i, "-")[[1]][1:2], collapse = "-")}))
+sample_cov <- fread("data/sample_covariates.txt")
+rna_metadata <- sample_cov[match(samples, sample_cov$core_ID), 1:8]
+rna_metadata$CellType = unlist(lapply(colnames(rna_counts), function(i) {
+  paste(strsplit(i, "-")[[1]][-2:-1], collapse = "_")})
+  )
+
+rna_counts <- rna_counts[, rna_metadata$CellType %in% ct_order[1:5]]
+libSizes <- apply(rna_counts, 2, sum)
+rna_norm <- rna_counts/libSizes*(10^6)
+
+rna <- rna_counts[rownames(rna_counts) == "GNLY", ]
+
+gginput <-
+  lapply(unique(rna_metadata$CellType), function(i) {
+    data.frame(
+      Lung = rna[which(rna_metadata$cells== "Lung" & rna_metadata$CellType == i)],
+      Spleen = rna[which(rna_metadata$cells== "Spleen" & rna_metadata$CellType == i)],
+      CellType = i
+    )
+  })
+
+gginput <- do.call(rbind, gginput)
+
+ggplot(gginput %>% 
+         filter(CellType %in% ct_order[1:5]) %>%
+         pivot_longer(!CellType, 
+                      names_to = "Tissue",
+                      values_to = "Counts"), 
+       aes(x = CellType,
+           y = log2(Counts),
+           fill = Tissue)) + 
+  xlab("") + ylab("log2(Counts)") +
+  geom_violin() + 
+  geom_jitter(position = position_dodge(width = 0.9), size = 0.7) + 
+  theme_pub()
+```
+
+### GO enrichment for cross-tissue genes
+
+```{r}
+# preparing inputs for GO enrichment
+
+# bkgGenes <- unique(tests$Other$gene)
+# lung_up <- gginput[gginput$group == "Lung Up-regulated", ]
+# genesets <- lapply(split(lung_up, lung_up$cluster), function(i) {i$gene})
+# spleen_up <- gginput[gginput$group == "Spleen Up-regulated", ]
+# genesets <- lapply(split(spleen_up, spleen_up$cluster), function(i) {i$gene})
+# visulize GO enrichment outputs
+go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/DESeq2/lung_upreg_GO_enrichment.RDS")
+feature = "Biological"
+go_tbl <-
+  do.call(rbind, go_list) %>%
+    filter(k %in% ct_order[1:5])
+
+toshow <- 
+    go_tbl %>% 
+      filter(FDR <= 0.05 & grepl(feature, database)) %>%
+          group_by(k) %>%
+          slice_max(n = 8, order_by = enrichmentRatio) %>%
+          pull(description)
+
+ggplot(
+    go_tbl %>% 
+      filter(grepl(feature, database) & description %in% toshow) %>%
+      mutate(FDR_adj = ifelse(FDR == 0, 10^(-10), FDR)),
+    aes(y = description,
+        x = factor(k, levels = ct_order[1:5]),
+        size = enrichmentRatio,
+        color = -log10(FDR_adj))) + 
+    geom_point() + xlab("") + ylab("") + 
+     # scale_fill_gradient(
+     #   limits = c(0, 4),
+     #   oob = squish) +
+    theme_pub() + ggtitle("GO BP enrichment for lung up-regulated genes") + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+```
+
+```{r}
+go_list <- readRDS("output/u19_multiomics/output/GO_enrichment/btw_tissue/DESeq2/spleen_upreg_GO_enrichment.RDS")
+feature = "Biological"
+go_tbl <-
+  do.call(rbind, go_list) %>%
+    filter(k %in% ct_order[1:5])
+
+toshow <- 
+    go_tbl %>% 
+      filter(FDR <= 0.05 & grepl(feature, database)) %>%
+          group_by(k) %>%
+          slice_max(n = 8, order_by = enrichmentRatio) %>%
+          pull(description)
+
+ggplot(
+    go_tbl %>% 
+      filter(grepl(feature, database) & description %in% toshow) %>%
+      mutate(FDR_adj = ifelse(FDR == 0, 10^(-10), FDR)),
+    aes(y = description,
+        x = factor(k, levels = ct_order[1:5]),
+        size = enrichmentRatio,
+        color = -log10(FDR_adj))) + 
+    geom_point() + xlab("") + ylab("") + 
+     # scale_fill_gradient(
+     #   limits = c(0, 4),
+     #   oob = squish) +
+    theme_pub() + ggtitle("GO BP enrichment for spleen up-regulated genes") + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.5))
+```
+
+
+
+
+
+
+
+
+
+
+
+
