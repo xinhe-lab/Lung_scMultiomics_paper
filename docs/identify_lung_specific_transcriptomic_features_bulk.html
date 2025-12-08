@@ -10,8 +10,9 @@
 
 
 
+<meta name="date" content="2025-12-08" />
 
-<title>Single-cell multiomics analyses on lung immune cells</title>
+<title>Identify lung-specific transcriptomic features</title>
 
 <script src="site_libs/header-attrs-2.29/header-attrs.js"></script>
 <script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
@@ -29,6 +30,9 @@
        h6 {font-size: 12px;}
        code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
        pre:not([class]) { background-color: white }</style>
+<script src="site_libs/jqueryui-1.13.2/jquery-ui.min.js"></script>
+<link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
+<script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
@@ -231,6 +235,69 @@ $(document).ready(function () {
 
 
 
+<style type="text/css">
+
+#TOC {
+  margin: 25px 0px 20px 0px;
+}
+@media (max-width: 768px) {
+#TOC {
+  position: relative;
+  width: 100%;
+}
+}
+
+@media print {
+.toc-content {
+  /* see https://github.com/w3c/csswg-drafts/issues/4434 */
+  float: right;
+}
+}
+
+.toc-content {
+  padding-left: 30px;
+  padding-right: 40px;
+}
+
+div.main-container {
+  max-width: 1200px;
+}
+
+div.tocify {
+  width: 20%;
+  max-width: 260px;
+  max-height: 85%;
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  div.tocify {
+    width: 25%;
+  }
+}
+
+@media (max-width: 767px) {
+  div.tocify {
+    width: 100%;
+    max-width: none;
+  }
+}
+
+.tocify ul, .tocify li {
+  line-height: 20px;
+}
+
+.tocify-subheader .tocify-item {
+  font-size: 0.90em;
+}
+
+.tocify .list-group-item {
+  border-radius: 0px;
+}
+
+
+</style>
+
+
 
 </head>
 
@@ -238,6 +305,16 @@ $(document).ready(function () {
 
 
 <div class="container-fluid main-container">
+
+
+<!-- setup 3col/9col grid for toc_float and main content  -->
+<div class="row">
+<div class="col-xs-12 col-sm-4 col-md-3">
+<div id="TOC" class="tocify">
+</div>
+</div>
+
+<div class="toc-content col-xs-12 col-sm-8 col-md-9">
 
 
 
@@ -281,8 +358,9 @@ $(document).ready(function () {
 
 
 
-<h1 class="title toc-ignore">Single-cell multiomics analyses on lung
-immune cells</h1>
+<h1 class="title toc-ignore">Identify lung-specific transcriptomic
+features</h1>
+<h4 class="date">2025-12-08</h4>
 
 </div>
 
@@ -290,7 +368,7 @@ immune cells</h1>
 <p>
 <button type="button" class="btn btn-default btn-workflowr btn-workflowr-report" data-toggle="collapse" data-target="#workflowr-report">
 <span class="glyphicon glyphicon-list" aria-hidden="true"></span>
-workflowr <span class="glyphicon glyphicon-ok text-success"
+workflowr <span class="glyphicon glyphicon-exclamation-sign text-danger"
 aria-hidden="true"></span>
 </button>
 </p>
@@ -301,8 +379,8 @@ aria-hidden="true"></span>
 </li>
 <li>
 <a data-toggle="tab" href="#checks"> Checks <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
-</a>
+class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> </a>
 </li>
 <li>
 <a data-toggle="tab" href="#versions">Past versions</a>
@@ -315,9 +393,9 @@ class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span>
 </p>
 <p>
 <strong>Checks:</strong> <span
-class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 2
+class="glyphicon glyphicon-ok text-success" aria-hidden="true"></span> 6
 <span class="glyphicon glyphicon-exclamation-sign text-danger"
-aria-hidden="true"></span> 0
+aria-hidden="true"></span> 1
 </p>
 <p>
 <strong>Knit directory:</strong> <code>Lung_scMultiomics_paper/</code>
@@ -352,6 +430,116 @@ class="panel-collapse collapse">
 <p>Great! Since the R Markdown file has been committed to the Git
 repository, you know the exact version of the code that produced these
 results.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongEnvironmentstrongempty">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Environment:</strong> empty </a>
+</p>
+</div>
+<div id="strongEnvironmentstrongempty" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! The global environment was empty. Objects defined in the
+global environment can affect the analysis in your R Markdown file in
+unknown ways. For reproduciblity it’s best to always run the code in an
+empty environment.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSeedstrongcodesetseed20250512code">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Seed:</strong>
+<code>set.seed(20250512)</code> </a>
+</p>
+</div>
+<div id="strongSeedstrongcodesetseed20250512code"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>The command <code>set.seed(20250512)</code> was run prior to running
+the code in the R Markdown file. Setting a seed ensures that any results
+that rely on randomness, e.g. subsampling or permutations, are
+reproducible.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongSessioninformationstrongrecorded">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Session information:</strong>
+recorded </a>
+</p>
+</div>
+<div id="strongSessioninformationstrongrecorded"
+class="panel-collapse collapse">
+<div class="panel-body">
+<p>Great job! Recording the operating system, R version, and package
+versions is critical for reproducibility.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongCachestrongnone">
+<span class="glyphicon glyphicon-ok text-success"
+aria-hidden="true"></span> <strong>Cache:</strong> none </a>
+</p>
+</div>
+<div id="strongCachestrongnone" class="panel-collapse collapse">
+<div class="panel-body">
+<p>Nice! There were no cached chunks for this analysis, so you can be
+confident that you successfully produced the results during this
+run.</p>
+</div>
+</div>
+</div>
+<div class="panel panel-default">
+<div class="panel-heading">
+<p class="panel-title">
+<a data-toggle="collapse" data-parent="#workflowr-checks" href="#strongFilepathsstrongabsolute">
+<span class="glyphicon glyphicon-exclamation-sign text-danger"
+aria-hidden="true"></span> <strong>File paths:</strong> absolute </a>
+</p>
+</div>
+<div id="strongFilepathsstrongabsolute" class="panel-collapse collapse">
+<div class="panel-body">
+<p>
+Using absolute paths to the files within your workflowr project makes it
+difficult for you and others to run your code on a different machine.
+Change the absolute path(s) below to the suggested relative path(s) to
+make your code more reproducible.
+</p>
+<table class="table table-condensed table-hover">
+<thead>
+<tr>
+<th style="text-align:left;">
+absolute
+</th>
+<th style="text-align:left;">
+relative
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+~/projects/Lung_scMultiomics_paper/data/color_codes.RDS
+</td>
+<td style="text-align:left;">
+data/color_codes.RDS
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -610,10 +798,13 @@ have uncommitted changes.
 
 <p>
 These are the previous versions of the repository in which changes were
-made to the R Markdown (<code>analysis/index.Rmd</code>) and HTML
-(<code>docs/index.html</code>) files. If you’ve configured a remote Git
-repository (see <code>?wflow_git_remote</code>), click on the hyperlinks
-in the table below to view the files as they were in that past version.
+made to the R Markdown
+(<code>analysis/identify_lung_specific_transcriptomic_features_bulk.Rmd</code>)
+and HTML
+(<code>docs/identify_lung_specific_transcriptomic_features_bulk.html</code>)
+files. If you’ve configured a remote Git repository (see
+<code>?wflow_git_remote</code>), click on the hyperlinks in the table
+below to view the files as they were in that past version.
 </p>
 <div class="table-responsive">
 <table class="table table-condensed table-hover">
@@ -642,7 +833,7 @@ Message
 Rmd
 </td>
 <td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/b5746bedd2d1c67bfa28f5d786a36ab5e528da4e/analysis/index.Rmd" target="_blank">b5746be</a>
+<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/b5746bedd2d1c67bfa28f5d786a36ab5e528da4e/analysis/identify_lung_specific_transcriptomic_features_bulk.Rmd" target="_blank">b5746be</a>
 </td>
 <td>
 Jing Gu
@@ -654,295 +845,6 @@ Jing Gu
 identify bulk-level DE results
 </td>
 </tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/5ee7bf72a65206b5f2ad9d06bc4cd66937663b17/docs/index.html" target="_blank">5ee7bf7</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-11-03
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/6528782a97183858671bddb9f1fbbd23dcda844c/analysis/index.Rmd" target="_blank">6528782</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-11-03
-</td>
-<td>
-correct batches
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/bc96c7d9199771572cb4d5c8ac547c7623ea4fb0/docs/index.html" target="_blank">bc96c7d</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-11-01
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/04ff1719cb59915b05d8e4c3a91ae1313eede199/analysis/index.Rmd" target="_blank">04ff171</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-11-01
-</td>
-<td>
-TF regulation to explain cross-tissue DE genes
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/0a5f11ba08a7e396ca804373b5c47e5248a7d4ca/docs/index.html" target="_blank">0a5f11b</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-11-01
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/7933e286c12290c5819cce4621f8deec381b62de/docs/index.html" target="_blank">7933e28</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-11-01
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/abc6dc8573978dbb49bb594e2ea0b7ee5df73afc/analysis/index.Rmd" target="_blank">abc6dc8</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-11-01
-</td>
-<td>
-TF regulation to explain cross-tissue DE genes
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/59c7c88a220c60c97e77485e1c861924a8620e20/docs/index.html" target="_blank">59c7c88</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-23
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/007fdb91e953babc761c2e56bfeb33386a71b13b/docs/index.html" target="_blank">007fdb9</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-22
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/fa9188648ab80b79f1d697d6c4bd49dff5f2bb18/analysis/index.Rmd" target="_blank">fa91886</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-22
-</td>
-<td>
-updated index page
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/497b42c341ba272e118cfec3270a9b21b27576f5/docs/index.html" target="_blank">497b42c</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-14
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/9008bd6d61a5fd68cbc2639bec30281d654abacb/docs/index.html" target="_blank">9008bd6</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-14
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/c40f0da66d1c349627657922366e98a1ce44c255/analysis/index.Rmd" target="_blank">c40f0da</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-14
-</td>
-<td>
-DEG analyses
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/358af1236161da7ba2030a960a608fd1d2a8f65c/docs/index.html" target="_blank">358af12</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-13
-</td>
-<td>
-Build site.
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/53d9d851215d9f9bb57d92a6819b7fecbb3072ea/analysis/index.Rmd" target="_blank">53d9d85</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-13
-</td>
-<td>
-updated index page
-</td>
-</tr>
-<tr>
-<td>
-Rmd
-</td>
-<td>
-<a href="https://github.com/xinhe-lab/Lung_scMultiomics_paper/blob/db6ddbbbea5fdbc8ae5525e528f88c6ecd51c2f2/analysis/index.Rmd" target="_blank">db6ddbb</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-12
-</td>
-<td>
-started workflowr
-</td>
-</tr>
-<tr>
-<td>
-html
-</td>
-<td>
-<a href="https://rawcdn.githack.com/xinhe-lab/Lung_scMultiomics_paper/db6ddbbbea5fdbc8ae5525e528f88c6ecd51c2f2/docs/index.html" target="_blank">db6ddbb</a>
-</td>
-<td>
-Jing Gu
-</td>
-<td>
-2025-05-12
-</td>
-<td>
-started workflowr
-</td>
-</tr>
 </tbody>
 </table>
 </div>
@@ -950,44 +852,115 @@ started workflowr
 </div>
 </div>
 </div>
-<div id="introduction" class="section level2">
-<h2>Introduction</h2>
-<p>Previous study showed immune cells have a shared role in the
-development of both AOA and COA based on heritability analysis on
-ATAC-seq data of blood and lung cell types. Due to lack of resolution,
-it is unclear if different immune subsets sampled from lung or other
-tissues can have distinct roles in the genetics of asthma.</p>
+<div id="differential-gene-expression-analyses-with-deseq2"
+class="section level1">
+<h1>Differential gene expression analyses with DESeq2</h1>
+<p>log(Counts) ~ factor(submission_date) + Race + Age + Sex + Tissue</p>
+<div id="summarizing-de-genes-by-selecting-p-value-cutoffs"
+class="section level2">
+<h2>Summarizing DE genes by selecting p-value cutoffs</h2>
+<p>A table of cell counts by tissue and cell-type.</p>
+<pre><code>          
+           lungs spleens
+  Other     1654     104
+  Treg      1336      47
+  Th17      2732      68
+  CD4_T     6980     886
+  CD8_T    12210     421
+  NK        8067     464
+  Memory_B  5287   10507
+  Naive_B   1174    1710</code></pre>
+<p>A barplot for number of DE genes detected for each cell type except
+for Th17 and Treg, due to low number of cells in spleen.</p>
+<p><img src="figure/identify_lung_specific_transcriptomic_features_bulk.Rmd/unnamed-chunk-2-1.png" width="960" style="display: block; margin: auto;" /></p>
+<div id="a-combined-volcano-plot-for-de-genes-across-cell-types"
+class="section level3">
+<h3>A combined volcano plot for DE genes across cell types</h3>
+<p><img src="figure/identify_lung_specific_transcriptomic_features_bulk.Rmd/unnamed-chunk-3-1.png" width="672" style="display: block; margin: auto;" /></p>
 </div>
-<div id="hypotheses" class="section level2">
-<h2>Hypotheses</h2>
-<ul>
-<li>Lung resident immune cells have distinct transcriptomic and
-epigenetic features</li>
-<li>Lung resident immune cells at a granular level show distinct roles
-in the genetics of asthma.</li>
-<li>Fine-mapped putative causal variants at asthma loci may regulate
-enhancer activity through one or more lung immune subsets.</li>
-</ul>
+<div id="de-statistics-for-the-gnly-example" class="section level3">
+<h3>DE statistics for the <em>GNLY</em> example</h3>
+<pre><code>    baseMean log2FoldChange     lfcSE     stat       pvalue         padj gene
+1 1757.30559       2.323263 0.5248658 4.426395 9.582078e-06 9.551590e-04 GNLY
+2  535.68527       6.856581 1.3146697 5.215440 1.833813e-07 1.275976e-05 GNLY
+3   37.37406       4.564120 0.7593359 6.010673 1.847542e-09 1.420298e-06 GNLY
+   cluster avg_log2FC             group
+1       NK   2.323263 Lung Up-regulated
+2 Memory_B   6.856581 Lung Up-regulated
+3  Naive_B   4.564120 Lung Up-regulated</code></pre>
 </div>
-<div id="experiment-design" class="section level2">
-<h2>Experiment design</h2>
-<p>Single-cell multiomics on paired lung and spleen samples from 9
-donors (6 controls and 3 cases).</p>
+<div id="go-enrichment-for-cross-tissue-genes" class="section level3">
+<h3>GO enrichment for cross-tissue genes</h3>
+<p><img src="figure/identify_lung_specific_transcriptomic_features_bulk.Rmd/unnamed-chunk-6-1.png" width="672" style="display: block; margin: auto;" /></p>
+<p><img src="figure/identify_lung_specific_transcriptomic_features_bulk.Rmd/unnamed-chunk-7-1.png" width="672" style="display: block; margin: auto;" /></p>
+<br>
+<p>
+<button type="button" class="btn btn-default btn-workflowr btn-workflowr-sessioninfo" data-toggle="collapse" data-target="#workflowr-sessioninfo" style="display: block;">
+<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+Session information
+</button>
+</p>
+<div id="workflowr-sessioninfo" class="collapse">
+<pre><code>R version 4.2.0 (2022-04-22)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: CentOS Linux 7 (Core)
+
+Matrix products: default
+BLAS/LAPACK: /software/openblas-0.3.13-el7-x86_64/lib/libopenblas_haswellp-r0.3.13.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8 LC_NUMERIC=C         LC_TIME=C           
+ [4] LC_COLLATE=C         LC_MONETARY=C        LC_MESSAGES=C       
+ [7] LC_PAPER=C           LC_NAME=C            LC_ADDRESS=C        
+[10] LC_TELEPHONE=C       LC_MEASUREMENT=C     LC_IDENTIFICATION=C 
+
+attached base packages:
+[1] stats4    grid      stats     graphics  grDevices utils     datasets 
+[8] methods   base     
+
+other attached packages:
+ [1] ggrepel_0.9.6               SingleCellExperiment_1.20.1
+ [3] cowplot_1.1.3               ComplexHeatmap_2.14.0      
+ [5] htmltools_0.5.8.1           scales_1.4.0               
+ [7] colorRamp2_0.1.0            tidyr_1.3.1                
+ [9] dplyr_1.1.4                 rhdf5_2.42.1               
+[11] SummarizedExperiment_1.28.0 Biobase_2.58.0             
+[13] MatrixGenerics_1.10.0       Rcpp_1.0.14                
+[15] Matrix_1.6-5                GenomicRanges_1.50.2       
+[17] GenomeInfoDb_1.34.9         IRanges_2.32.0             
+[19] S4Vectors_0.36.2            BiocGenerics_0.44.0        
+[21] matrixStats_1.5.0           data.table_1.17.4          
+[23] stringr_1.5.1               plyr_1.8.9                 
+[25] magrittr_2.0.3              ggplot2_3.5.2              
+[27] gtable_0.3.6                gtools_3.9.5               
+[29] gridExtra_2.3               ArchR_1.0.2                
+
+loaded via a namespace (and not attached):
+ [1] sass_0.4.10            jsonlite_2.0.0         foreach_1.5.2         
+ [4] bslib_0.9.0            GenomeInfoDbData_1.2.9 yaml_2.3.10           
+ [7] pillar_1.10.2          lattice_0.22-7         glue_1.8.0            
+[10] digest_0.6.37          RColorBrewer_1.1-3     promises_1.3.2        
+[13] XVector_0.38.0         colorspace_2.1-1       httpuv_1.6.16         
+[16] pkgconfig_2.0.3        GetoptLong_1.0.5       zlibbioc_1.44.0       
+[19] purrr_1.0.4            whisker_0.4.1          later_1.4.2           
+[22] git2r_0.33.0           tibble_3.2.1           generics_0.1.4        
+[25] farver_2.1.2           cachem_1.1.0           withr_3.0.2           
+[28] cli_3.6.5              crayon_1.5.3           evaluate_1.0.3        
+[31] fs_1.6.6               doParallel_1.0.17      tools_4.2.0           
+[34] GlobalOptions_0.1.2    lifecycle_1.0.4        Rhdf5lib_1.20.0       
+[37] cluster_2.1.8.1        DelayedArray_0.24.0    compiler_4.2.0        
+[40] jquerylib_0.1.4        rlang_1.1.6            RCurl_1.98-1.17       
+[43] dichromat_2.0-0.1      iterators_1.0.14       rhdf5filters_1.10.1   
+[46] rstudioapi_0.17.1      circlize_0.4.15        rjson_0.2.23          
+[49] labeling_0.4.3         bitops_1.0-9           rmarkdown_2.29        
+[52] codetools_0.2-20       R6_2.6.1               knitr_1.50            
+[55] fastmap_1.2.0          clue_0.3-66            workflowr_1.7.1       
+[58] rprojroot_2.0.4        shape_1.4.6            stringi_1.8.4         
+[61] parallel_4.2.0         vctrs_0.6.5            png_0.1-8             
+[64] tidyselect_1.2.1       xfun_0.52             </code></pre>
 </div>
-<div id="results" class="section level2">
-<h2>Results</h2>
-<p><a href="identify_cell_types.html">annotate cell types for
-scMultiomics datasets</a></p>
-<p><a
-href="identify_lung_specific_transcriptomic_features_bulk.html">transcriptomic
-features specific to lung</a></p>
-<p><a
-href="heritability_enrichment_for_lung_open_chromatin.html">heritability
-enrichment for lung open chromatin regions</a></p>
-<p><a href="link_peaks_to_genes.html">linking asthma-related CREs to
-genes</a></p>
-<p><a href="TFs_drive_cross_tissue_DE_corrected.html">Testing whether
-TFs drive cross-tissue GE differences</a></p>
+</div>
+</div>
 </div>
 
 
@@ -1006,6 +979,8 @@ footer is added to webpages before the MathJax javascript. -->
 
 
 
+</div>
+</div>
 
 </div>
 
@@ -1038,6 +1013,35 @@ $(document).ready(function () {
 
 <!-- code folding -->
 
+<script>
+$(document).ready(function ()  {
+
+    // temporarily add toc-ignore selector to headers for the consistency with Pandoc
+    $('.unlisted.unnumbered').addClass('toc-ignore')
+
+    // move toc-ignore selectors from section div to header
+    $('div.section.toc-ignore')
+        .removeClass('toc-ignore')
+        .children('h1,h2,h3,h4,h5').addClass('toc-ignore');
+
+    // establish options
+    var options = {
+      selectors: "h1,h2,h3",
+      theme: "bootstrap3",
+      context: '.toc-content',
+      hashGenerator: function (text) {
+        return text.replace(/[.\\/?&!#<>]/g, '').replace(/\s/g, '_');
+      },
+      ignoreSelector: ".toc-ignore",
+      scrollTo: 0
+    };
+    options.showAndHide = true;
+    options.smoothScroll = true;
+
+    // tocify
+    var toc = $("#TOC").tocify(options).data("toc-tocify");
+});
+</script>
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>
